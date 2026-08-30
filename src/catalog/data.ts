@@ -1,5 +1,8 @@
-import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
+import type { ReasoningEffortId as ReasoningEffortIdType } from '@deepseek-ai/dsh-llm'
 import type { CommandCodeStaticModel, Protocol } from '../types.ts'
+
+// ponytail: local identity keeps client bundle free of @deepseek-ai/dsh-llm runtime require
+const ReasoningEffortId = (id: string): ReasoningEffortIdType => id as ReasoningEffortIdType
 
 // ── Single source of truth for every known model ──────────────────────
 // Each entry declares everything about a model once. All derived maps
