@@ -107,6 +107,7 @@ export const KNOWN_PRICING: Readonly<Record<string, ModelPricingFact>> = {
   'xai/grok-4.6': { planTier: 'goat', planLabel: 'GOAT', priceComment: 'GOATプラン利用可' },
   'xai/grok-4.5': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
   'meta/muse-spark-1.2': { planTier: 'goat', planLabel: 'GOAT', priceComment: 'GOATプラン利用可' },
+  'meta/muse-spark-1.2-contributor': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
 
   // Go / GOAT Models
   'deepseek/deepseek-v4-pro': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
@@ -166,6 +167,7 @@ export const LATEST_MODEL_IDS: ReadonlySet<string> = new Set([
   'MiniMaxAI/MiniMax-M3',
   'minimax/minimax-m3-free',
   'meta/muse-spark-1.2',
+  'meta/muse-spark-1.2-contributor',
   'stepfun/Step-3.7-Flash',
   'tencent/hy4-preview',
   'xiaomi/mimo-v2.5-pro',
@@ -400,6 +402,16 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
     id: 'meta/muse-spark-1.2',
     name: 'Muse Spark 1.2',
     description: buildModelDescription('meta/muse-spark-1.2', 1048576),
+    contextWindow: 1048576,
+    maxTokens: 65536,
+    protocol: 'openai',
+    inputModalities: ['text', 'image'],
+    supportsTools: true,
+  },
+  {
+    id: 'meta/muse-spark-1.2-contributor',
+    name: 'Muse Spark 1.2 Contributor',
+    description: buildModelDescription('meta/muse-spark-1.2-contributor', 1048576),
     contextWindow: 1048576,
     maxTokens: 65536,
     protocol: 'openai',
