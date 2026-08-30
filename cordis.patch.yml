@@ -1,0 +1,5 @@
+- insert:
+    - id: llm-commandcode-goat
+      name: dsh-commandcode-goat-provider
+      config:
+        apiKeyEnv: COMMANDCODE_API_KEY
