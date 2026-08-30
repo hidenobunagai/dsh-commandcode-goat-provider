@@ -88,20 +88,26 @@ function formatPrice(val: number): string {
  * Keep it to ~60 chars so it does not wrap to 3 lines at 280px width.
  * Detailed pricing / discounts / IQ are surfaced in hover cards elsewhere.
  */
-export function buildModelDescription(modelId: string, contextWindow?: number): string {
+export function buildModelDescription(
+  modelId: string,
+  contextWindow?: number,
+  discoveredPrice?: { inputPrice?: number | 'free'; outputPrice?: number | 'free' },
+): string {
   const parts: string[] = []
   const stats = KNOWN_STATS[modelId]
 
-  // 1. Price (short)
-  if (stats) {
-    if (stats.inputPrice === 'free') {
-      parts.push('Free')
-    } else if (typeof stats.inputPrice === 'number') {
-      // "$0.20 → $1.20" fits; no label prefix
-      const inStr = formatPrice(stats.inputPrice)
-      const outStr = typeof stats.outputPrice === 'number' ? `→${formatPrice(stats.outputPrice)}` : ''
-      parts.push(`${inStr}${outStr}`)
-    }
+  // 1. Price (short) — prefer static catalog, fall back to discovery-carried pricing
+  const inputPrice = stats?.inputPrice ?? discoveredPrice?.inputPrice
+  const outputPrice = stats?.outputPrice ?? discoveredPrice?.outputPrice
+  if (inputPrice === 'free') {
+    parts.push('Free')
+  } else if (typeof inputPrice === 'number') {
+    const inStr = formatPrice(inputPrice)
+    const outStr = typeof outputPrice === 'number' ? `→${formatPrice(outputPrice)}` : ''
+    parts.push(`${inStr}${outStr}`)
+  } else if (!stats) {
+    // Truly unknown: surface ctx + caps so the model is still identifiable;
+    // do not invent a price.
   }
 
   // 2. Context
@@ -117,6 +123,43 @@ export function buildModelDescription(modelId: string, contextWindow?: number): 
 }
 
 // ── Normalization ───────────────────────────────────────────────────
+
+/**
+ * Narrow candidate pricing shape from discovery. Providers differ:
+ * OpenAI-style: `pricing: { prompt: "0.002", completion: "0.008" }` or flat numbers.
+ * Current Command Code API: no pricing at all — this is forward compat.
+ */
+function extractDiscoveredPricing(raw: Record<string, unknown>): { inputPrice?: number | 'free'; outputPrice?: number | 'free' } | undefined {
+  const pickPrice = (v: unknown): number | 'free' | undefined => {
+    if (v === 'free' || v === 0) return 'free'
+    if (typeof v === 'number' && Number.isFinite(v) && v > 0) return v
+    if (typeof v === 'string') {
+      const trimmed = v.trim().toLowerCase()
+      if (trimmed === 'free' || trimmed === '0') return 'free'
+      const n = Number(trimmed)
+      if (Number.isFinite(n) && n > 0) return n
+    }
+    return undefined
+  }
+
+  // Top-level flat
+  const topIn = pickPrice(raw.pricing_prompt ?? raw.prompt_price ?? raw.input_price ?? raw.inputPrice)
+  const topOut = pickPrice(raw.pricing_completion ?? raw.completion_price ?? raw.output_price ?? raw.outputPrice)
+  // Nested pricing object
+  let nestedIn: number | 'free' | undefined
+  let nestedOut: number | 'free' | undefined
+  const pricing = raw.pricing
+  if (pricing && typeof pricing === 'object' && !Array.isArray(pricing)) {
+    const p = pricing as Record<string, unknown>
+    nestedIn = pickPrice(p.prompt ?? p.input ?? p.input_price ?? p.prompt_price)
+    nestedOut = pickPrice(p.completion ?? p.output ?? p.output_price ?? p.completion_price)
+  }
+
+  const inputPrice = topIn ?? nestedIn
+  const outputPrice = topOut ?? nestedOut
+  if (inputPrice === undefined && outputPrice === undefined) return undefined
+  return { ...(inputPrice !== undefined ? { inputPrice } : {}), ...(outputPrice !== undefined ? { outputPrice } : {}) }
+}
 
 export function normalizeDiscoveredModels(response: unknown): LlmDiscoveredModel[] {
   if (!response || typeof response !== 'object') return []
@@ -149,7 +192,14 @@ export function normalizeDiscoveredModels(response: unknown): LlmDiscoveredModel
       maxTokens = Math.floor(raw.max_tokens)
     }
 
-    result.push({ id, name, contextWindow, maxTokens })
+    const pricing = extractDiscoveredPricing(raw)
+    result.push({
+      id,
+      name,
+      contextWindow,
+      maxTokens,
+      ...(pricing ? { pricing } : {}),
+    } as LlmDiscoveredModel & { pricing?: { inputPrice?: number | 'free'; outputPrice?: number | 'free' } } as unknown as LlmDiscoveredModel)
   }
 
   return result
@@ -181,7 +231,8 @@ export function resolveCommandCodeModel(
   const name = discovered?.name ?? staticEntry?.name ?? modelId
   const contextWindow = discovered?.contextWindow ?? staticEntry?.contextWindow ?? config.defaultContextWindow ?? DEFAULT_CONTEXT_WINDOW
   const defaultMaxTokens = discovered?.maxTokens ?? staticEntry?.maxTokens ?? config.maxTokens ?? DEFAULT_MAX_TOKENS
-  const description = buildModelDescription(modelId, contextWindow)
+  const discoveredPricing = (discovered as unknown as { pricing?: { inputPrice?: number | 'free'; outputPrice?: number | 'free' } } | undefined)?.pricing
+  const description = buildModelDescription(modelId, contextWindow, discoveredPricing)
   const hasImage = KNOWN_IMAGE_MODELS.has(modelId) || (staticEntry?.inputModalities?.includes('image') ?? false)
   const inputModalities: readonly ModelModality[] = hasImage ? ['text', 'image'] : ['text']
 
@@ -208,7 +259,8 @@ export function resolveCommandCodeModel(
 export function toModelInfo(provider: string, model: LlmDiscoveredModel): LlmModelInfo {
   const staticEntry = STATIC_CAPABILITIES.get(model.id)
   const hasImage = KNOWN_IMAGE_MODELS.has(model.id) || (staticEntry?.inputModalities?.includes('image') ?? false)
-  const description = buildModelDescription(model.id, model.contextWindow ?? staticEntry?.contextWindow)
+  const discoveredPricing = (model as unknown as { pricing?: { inputPrice?: number | 'free'; outputPrice?: number | 'free' } }).pricing
+  const description = buildModelDescription(model.id, model.contextWindow ?? staticEntry?.contextWindow, discoveredPricing)
   return {
     provider,
     id: model.id,
