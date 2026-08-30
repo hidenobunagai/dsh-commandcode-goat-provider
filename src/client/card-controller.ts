@@ -1,4 +1,5 @@
 import type { CommandCodeConfig } from '../types.ts'
+import { CATALOG } from '../catalog/data.ts'
 
 export interface CardState {
   isDirty: boolean
@@ -10,6 +11,10 @@ export interface CardState {
   requestTimeoutMs: number
   streamIdleTimeoutMs: number
   enableZdr: boolean
+  /** Model IDs hidden from the picker (persisted via settings). */
+  hiddenModels: string[]
+  /** All known model IDs to render visibility toggles (from static catalog). */
+  knownModelIds: readonly string[]
   fieldErrors: {
     baseURL?: string
     requestTimeoutMs?: string
@@ -51,6 +56,8 @@ export class CommandCodeCardController {
       requestTimeoutMs: 60000,
       streamIdleTimeoutMs: 300000,
       enableZdr: false,
+      hiddenModels: [],
+      knownModelIds: CATALOG.map((e) => e.id),
       fieldErrors: {},
     }
 
@@ -71,6 +78,7 @@ export class CommandCodeCardController {
         requestTimeoutMs: s.requestTimeoutMs ?? 60000,
         streamIdleTimeoutMs: s.streamIdleTimeoutMs ?? 300000,
         enableZdr: s.enableZdr ?? false,
+        hiddenModels: [...(s.hiddenModels ?? [])],
       }
     }
   }
@@ -183,6 +191,16 @@ export class CommandCodeCardController {
     this.notify()
   }
 
+  toggleHidden(modelId: string): void {
+    const set = new Set(this.state.hiddenModels)
+    if (set.has(modelId)) set.delete(modelId)
+    else set.add(modelId)
+    const next = { ...this.state, hiddenModels: [...set], isDirty: true, saveError: undefined } as CardState
+    next.fieldErrors = this.recomputeFieldErrors(next)
+    this.state = next
+    this.notify()
+  }
+
   discard(): void {
     const s = this.scope.getSnapshot()?.value || {}
     this.state = {
@@ -193,6 +211,7 @@ export class CommandCodeCardController {
       requestTimeoutMs: s.requestTimeoutMs ?? 60000,
       streamIdleTimeoutMs: s.streamIdleTimeoutMs ?? 300000,
       enableZdr: s.enableZdr ?? false,
+      hiddenModels: [...(s.hiddenModels ?? [])],
       fieldErrors: {},
       saveError: undefined,
     }
@@ -233,6 +252,7 @@ export class CommandCodeCardController {
       await this.scope.set('requestTimeoutMs', Number(this.state.requestTimeoutMs))
       await this.scope.set('streamIdleTimeoutMs', Number(this.state.streamIdleTimeoutMs))
       await this.scope.set('enableZdr', Boolean(this.state.enableZdr))
+      await this.scope.set('hiddenModels', [...this.state.hiddenModels])
 
       this.state = {
         ...this.state,

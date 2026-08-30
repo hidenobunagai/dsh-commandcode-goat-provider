@@ -67,6 +67,8 @@ export class CommandCodeAdapter extends LlmAdapter {
 
   override async listModels(provider: string): Promise<readonly LlmModelInfo[]> {
     let catalog = this.options.catalog()
+    const config = this.options.config()
+    const hiddenSet = new Set(config.hiddenModels ?? [])
     const isDiscovered = catalog !== undefined && catalog.length > 0
     if (!isDiscovered) {
       if (this.options.discoverModels) {
@@ -84,7 +86,9 @@ export class CommandCodeAdapter extends LlmAdapter {
     const hasDiscovered = isDiscovered || (catalog !== undefined && catalog.length > 0)
     const filtered = hasDiscovered ? all : all.filter((m: LlmDiscoveredModel) => LATEST_MODEL_IDS.has(m.id))
     const selected = filtered.length > 0 ? filtered : all
-    const sorted = [...selected].sort(compareModels)
+    // Hide user-disabled models from picker; direct API calls still resolve.
+    const visible = selected.filter((m) => !hiddenSet.has(m.id))
+    const sorted = [...visible].sort(compareModels)
     return sorted.map((m) => toModelInfo(provider, m))
   }
 

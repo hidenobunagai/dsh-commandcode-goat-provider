@@ -21,6 +21,12 @@ export type LocaleKey =
   | 'unconfigured'
   | 'readonly'
   | 'validationError'
+  | 'hiddenModels'
+  | 'hiddenModelsHint'
+  | 'hiddenModelsEmpty'
+  | 'modelVisibility'
+  | 'hideModel'
+  | 'showModel'
 
 export const EN_LOCALES: Record<LocaleKey, string> = {
   title: 'Command Code GOAT',
@@ -45,6 +51,12 @@ export const EN_LOCALES: Record<LocaleKey, string> = {
   unconfigured: 'Unconfigured',
   readonly: 'Read-only in environment',
   validationError: 'Please fix validation errors before saving',
+  hiddenModels: 'Visible Models',
+  hiddenModelsHint: 'Toggle models to hide them from the picker. Hidden models still work if already selected in a session.',
+  hiddenModelsEmpty: 'No models to configure',
+  modelVisibility: 'Model visibility',
+  hideModel: 'Hide',
+  showModel: 'Show',
 }
 
 export const JA_LOCALES: Record<LocaleKey, string> = {
@@ -70,6 +82,12 @@ export const JA_LOCALES: Record<LocaleKey, string> = {
   unconfigured: '未設定',
   readonly: '環境変数による読み取り専用',
   validationError: '入力エラーを修正してから保存してください',
+  hiddenModels: '表示モデル',
+  hiddenModelsHint: 'チェックを外したモデルはピッカーに表示されません。既存セッションの会話は維持されます。',
+  hiddenModelsEmpty: '設定可能なモデルがありません',
+  modelVisibility: 'モデルの表示',
+  hideModel: '非表示',
+  showModel: '表示',
 }
 
 export function getLocaleText(lang: string = 'en'): (key: LocaleKey) => string {

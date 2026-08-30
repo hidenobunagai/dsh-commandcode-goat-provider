@@ -8,6 +8,7 @@ export interface CommandCodeCardProps {
   state: CardState
   onEdit: <K extends keyof CardState>(field: K, value: CardState[K]) => void
   onEditNumeric: (field: 'requestTimeoutMs' | 'streamIdleTimeoutMs', raw: string) => void
+  onToggleHidden: (modelId: string) => void
   onSave: () => void
   onDiscard: () => void
 }
@@ -17,6 +18,7 @@ export function CommandCodeCard({
   state,
   onEdit,
   onEditNumeric,
+  onToggleHidden,
   onSave,
   onDiscard,
 }: CommandCodeCardProps): React.JSX.Element {
@@ -131,6 +133,32 @@ export function CommandCodeCard({
             <span className={styles.label}>{t('enableZdr')}</span>
           </label>
           <span className={styles.hint}>{t('enableZdrHint')}</span>
+        </div>
+
+        <div className={styles.field}>
+          <span className={styles.label}>{t('hiddenModels')}</span>
+          <span className={styles.hint}>{t('hiddenModelsHint')}</span>
+          <div className={styles.modelGrid}>
+            {state.knownModelIds.length === 0 ? (
+              <span className={styles.hint}>{t('hiddenModelsEmpty')}</span>
+            ) : (
+              state.knownModelIds.map((modelId) => {
+                const hidden = state.hiddenModels.includes(modelId)
+                return (
+                  <label key={modelId} className={`${styles.modelToggle} ${hidden ? styles.modelToggleHidden : ''}`}>
+                    <input
+                      type="checkbox"
+                      className={styles.checkbox}
+                      checked={!hidden}
+                      disabled={state.isSaving}
+                      onChange={() => onToggleHidden(modelId)}
+                    />
+                    <span className={styles.modelToggleLabel} title={modelId}>{modelId}</span>
+                  </label>
+                )
+              })
+            )}
+          </div>
         </div>
       </div>
 

@@ -41,6 +41,7 @@ export function apply(ctx: ClientContext): void {
       state,
       onEdit: (field, val) => controller.editField(field, val),
       onEditNumeric: (field, raw) => controller.editNumericField(field, raw),
+      onToggleHidden: (modelId) => controller.toggleHidden(modelId),
       onSave: () => void controller.save(),
       onDiscard: () => controller.discard(),
     })

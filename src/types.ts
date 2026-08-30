@@ -23,6 +23,7 @@ export interface CommandCodeConfig {
   enableZdr?: boolean
   retryPolicy?: RetryPolicyConfig
   protocolOverrides?: ProtocolOverride[]
+  hiddenModels?: string[]
 }
 
 export interface ResolvedConnection {

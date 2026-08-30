@@ -175,6 +175,43 @@
   border-color: var(--dsw-border-error, #ef4444) !important;
 }
 
+.modelGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 6px 12px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 8px;
+  border-radius: var(--dsw-radius-sm, 6px);
+  border: 1px solid var(--dsw-border-subtle, rgba(255, 255, 255, 0.06));
+  background-color: var(--dsw-surface-input, rgba(0, 0, 0, 0.15));
+}
+
+.modelToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: var(--dsw-text-primary, #ffffff);
+  cursor: pointer;
+  min-width: 0;
+}
+
+.modelToggleHidden {
+  opacity: 0.5;
+}
+
+.modelToggleHidden .modelToggleLabel {
+  text-decoration: line-through;
+  color: var(--dsw-text-muted, #6b7280);
+}
+
+.modelToggleLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .input,
   .button {
