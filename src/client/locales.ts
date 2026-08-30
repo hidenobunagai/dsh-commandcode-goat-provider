@@ -16,44 +16,61 @@ export type LocaleKey =
   | 'save'
   | 'saving'
   | 'discard'
+  | 'unsaved'
+  | 'saveFailed'
+  | 'overridden'
+  | 'reset'
+  | 'readOnly'
+  | 'invalidNumber'
+  | 'hiddenModels'
+  | 'hiddenModelsHint'
+  | 'hiddenModelsEmpty'
+  | 'modelSearchPlaceholder'
+  | 'modelSearchNoResults'
+  // legacy aliases kept for compat
   | 'clearKey'
   | 'configured'
   | 'unconfigured'
   | 'readonly'
   | 'validationError'
-  | 'hiddenModels'
-  | 'hiddenModelsHint'
-  | 'hiddenModelsEmpty'
   | 'modelVisibility'
   | 'hideModel'
   | 'showModel'
 
 export const EN_LOCALES: Record<LocaleKey, string> = {
   title: 'Command Code GOAT',
-  description: 'Connect to Command Code Provider API for bleeding-edge reasoning and coding models.',
-  apiKey: 'API Key',
-  apiKeyHint: 'Write-only credential stored securely in DSH. Never logged or exposed.',
-  apiKeyConfigured: 'Configured',
-  apiKeyUnset: 'Not configured',
-  baseURL: 'Base URL',
-  baseURLHint: 'Command Code API base URL (default: https://api.commandcode.ai).',
-  requestTimeout: 'Request Timeout (ms)',
-  requestTimeoutHint: 'Maximum wait time for initial response (default: 60000).',
-  streamIdleTimeout: 'Stream Idle Timeout (ms)',
-  streamIdleTimeoutHint: 'Maximum silence between streaming tokens (default: 300000).',
+  description: 'Command Code Provider API — reasoning and coding models.',
+  apiKey: 'API key',
+  apiKeyHint: 'Stored outside the settings file. Leave blank to keep the current key.',
+  apiKeyConfigured: 'A key is configured.',
+  apiKeyUnset: 'No key is configured; chat is unavailable until one is.',
+  baseURL: 'Endpoint',
+  baseURLHint: 'Leave blank to use the provider default.',
+  requestTimeout: 'Request timeout (ms)',
+  requestTimeoutHint: 'How long to wait for the first response.',
+  streamIdleTimeout: 'Stream idle timeout (ms)',
+  streamIdleTimeoutHint: 'Max silence between streaming tokens.',
   enableZdr: 'Zero Data Retention (ZDR)',
-  enableZdrHint: 'Request zero-data-retention routing where supported by Command Code.',
-  save: 'Save Changes',
-  saving: 'Saving...',
+  enableZdrHint: 'Request ZDR routing where the provider supports it.',
+  save: 'Save',
+  saving: 'Saving…',
   discard: 'Discard',
+  unsaved: 'Unsaved',
+  saveFailed: 'The deployment did not accept these values; they were left for you to correct.',
+  overridden: 'Overridden',
+  reset: 'Reset to default',
+  readOnly: 'This deployment stores settings read-only.',
+  invalidNumber: 'Enter a number, or leave blank to use the default.',
+  hiddenModels: 'Visible models',
+  hiddenModelsHint: 'Uncheck to hide from the picker. Hidden models still work in existing sessions.',
+  hiddenModelsEmpty: 'No models to configure.',
+  modelSearchPlaceholder: 'Filter models…',
+  modelSearchNoResults: 'No models match.',
   clearKey: 'Clear Key',
   configured: 'Ready',
   unconfigured: 'Unconfigured',
   readonly: 'Read-only in environment',
   validationError: 'Please fix validation errors before saving',
-  hiddenModels: 'Visible Models',
-  hiddenModelsHint: 'Toggle models to hide them from the picker. Hidden models still work if already selected in a session.',
-  hiddenModelsEmpty: 'No models to configure',
   modelVisibility: 'Model visibility',
   hideModel: 'Hide',
   showModel: 'Show',
@@ -61,30 +78,38 @@ export const EN_LOCALES: Record<LocaleKey, string> = {
 
 export const JA_LOCALES: Record<LocaleKey, string> = {
   title: 'Command Code GOAT',
-  description: 'Command Code Provider API 経由で最新の推論・コーディングモデルを利用します。',
+  description: 'Command Code Provider API — 推論・コーディングモデル。',
   apiKey: 'APIキー',
-  apiKeyHint: 'DSH 資格情報ストアに安全に保存される書き込み専用キー。ログや画面に露出しません。',
-  apiKeyConfigured: '設定済み',
-  apiKeyUnset: '未設定',
-  baseURL: 'ベースURL',
-  baseURLHint: 'Command Code API のベースURL（デフォルト: https://api.commandcode.ai）。',
+  apiKeyHint: '設定ファイル外に保存。空欄のままでは現在のキーを保持します。',
+  apiKeyConfigured: 'キーが設定されています。',
+  apiKeyUnset: 'キーが未設定のためチャットは利用できません。',
+  baseURL: 'エンドポイント',
+  baseURLHint: '空欄でプロバイダーの既定値を使用。',
   requestTimeout: 'リクエストタイムアウト (ms)',
-  requestTimeoutHint: '初回レスポンスの最大待機時間（デフォルト: 60000）。',
+  requestTimeoutHint: '初回レスポンスまでの最大待機時間。',
   streamIdleTimeout: 'ストリームアイドルタイムアウト (ms)',
-  streamIdleTimeoutHint: 'トークン間の無通信最大時間（デフォルト: 300000）。',
+  streamIdleTimeoutHint: 'トークン間の無通信の最大時間。',
   enableZdr: 'ゼロデータ保持 (ZDR)',
-  enableZdrHint: 'Command Code 側で対応している場合に Zero Data Retention を要求します。',
-  save: '変更を保存',
-  saving: '保存中...',
+  enableZdrHint: '対応プロバイダーで ZDR ルーティングを要求します。',
+  save: '保存',
+  saving: '保存中…',
   discard: '破棄',
+  unsaved: '未保存',
+  saveFailed: '値が受け入れられませんでした。修正して再保存してください。',
+  overridden: '上書き',
+  reset: '既定に戻す',
+  readOnly: 'このデプロイは設定を読み取り専用で保持しています。',
+  invalidNumber: '数値を入力するか、空欄で既定値を使用してください。',
+  hiddenModels: '表示モデル',
+  hiddenModelsHint: 'チェックを外すとピッカーに表示されません。既存セッションは維持されます。',
+  hiddenModelsEmpty: '設定可能なモデルがありません。',
+  modelSearchPlaceholder: 'モデルを絞り込む…',
+  modelSearchNoResults: '一致するモデルがありません。',
   clearKey: 'キーをクリア',
   configured: '利用可能',
   unconfigured: '未設定',
-  readonly: '環境変数による読み取り専用',
+  readonly: '環境変数により読み取り専用',
   validationError: '入力エラーを修正してから保存してください',
-  hiddenModels: '表示モデル',
-  hiddenModelsHint: 'チェックを外したモデルはピッカーに表示されません。既存セッションの会話は維持されます。',
-  hiddenModelsEmpty: '設定可能なモデルがありません',
   modelVisibility: 'モデルの表示',
   hideModel: '非表示',
   showModel: '表示',
