@@ -39,7 +39,11 @@ export function apply(ctx: Context, config: CommandCodeConfig): void {
 
   const resolveApiKey = async (): Promise<string> => {
     const activeConfig = getCurrentConfig()
-    const ref = credentialRef(activeConfig.apiKeyEnv ?? DEFAULT_API_KEY_ENV)
+    if (activeConfig.apiKey && activeConfig.apiKey.trim().length > 0) {
+      return activeConfig.apiKey.trim()
+    }
+    const envName = activeConfig.apiKeyEnv ?? DEFAULT_API_KEY_ENV
+    const ref = credentialRef(envName)
 
     // Try managed credential store first; fall back to ambient launch
     // environment so `COMMANDCODE_API_KEY=xxx dsh` keeps working even when
@@ -56,9 +60,16 @@ export function apply(ctx: Context, config: CommandCodeConfig): void {
       }
     }
 
-    const ambient = launchEnvironmentOf(ctx).get(ref)
-    if (ambient !== undefined && ambient.value.length > 0) {
-      return assertUsableApiKey(ambient.value, NS_STRING, ref)
+    try {
+      const ambient = launchEnvironmentOf(ctx).get(ref)
+      if (ambient !== undefined && ambient.value.length > 0) {
+        return assertUsableApiKey(ambient.value, NS_STRING, ref)
+      }
+    } catch {}
+
+    const directEnv = process.env[envName] ?? process.env.COMMANDCODE_API_KEY
+    if (directEnv && directEnv.trim().length > 0) {
+      return assertUsableApiKey(directEnv.trim(), NS_STRING, ref)
     }
 
     throw new LlmError(
