@@ -87,70 +87,79 @@ export const KNOWN_IMAGE_MODELS: ReadonlySet<string> = new Set([
   'z-ai/glm-5.3-flash',
 ])
 
-export interface ModelPricingFact {
+export interface ModelStats {
   planTier: 'free' | 'go' | 'goat' | 'pro' | 'provider'
   planLabel: string
-  dealLabel?: string
-  priceComment?: string
+  intelligence?: number
+  inputPrice?: number | 'free' // in USD per 1M tokens
+  outputPrice?: number | 'free'
+  discount?: string
 }
 
-export const KNOWN_PRICING: Readonly<Record<string, ModelPricingFact>> = {
-  // Free
-  'minimax/minimax-m3-free': { planTier: 'free', planLabel: 'FREE', dealLabel: '無料' },
-  'minimax/minimax-m2.7-free': { planTier: 'free', planLabel: 'FREE', dealLabel: '無料' },
-  'poolside/laguna-s-2.1-free': { planTier: 'free', planLabel: 'FREE', dealLabel: '無料' },
+export const KNOWN_STATS: Readonly<Record<string, ModelStats>> = {
+  // Free (3)
+  'poolside/laguna-s-2.1-free': { planTier: 'free', planLabel: 'Free', inputPrice: 'free', outputPrice: 'free' },
+  'minimax/minimax-m2.7-free': { planTier: 'free', planLabel: 'Free', intelligence: 38.9, inputPrice: 'free', outputPrice: 'free' },
+  'minimax/minimax-m3-free': { planTier: 'free', planLabel: 'Free', intelligence: 45.4, inputPrice: 'free', outputPrice: 'free' },
 
-  // GOAT Flagships
-  'gpt-5.6-luna': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
-  'gpt-5.6-sol': { planTier: 'goat', planLabel: 'GOAT', priceComment: 'GOATプラン利用可' },
-  'google/gemini-3.7-flash': { planTier: 'goat', planLabel: 'GOAT', dealLabel: '50% off', priceComment: 'GOATプラン利用可' },
-  'xai/grok-4.6': { planTier: 'goat', planLabel: 'GOAT', priceComment: 'GOATプラン利用可' },
-  'xai/grok-4.5': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
-  'meta/muse-spark-1.2': { planTier: 'goat', planLabel: 'GOAT', priceComment: 'GOATプラン利用可' },
-  'meta/muse-spark-1.2-contributor': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
+  // GOAT Plan (44)
+  'Qwen/Qwen3.7-Flash': { planTier: 'go', planLabel: 'Go/GOAT', inputPrice: 0.03, outputPrice: 0.13 },
+  'meta/muse-spark-1.2-contributor': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 56.8, inputPrice: 0.10, outputPrice: 0.20 },
+  'stepfun/Step-3.5-Flash': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 26.5, inputPrice: 0.10, outputPrice: 0.30 },
+  'xiaomi/mimo-v2.5': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 38.0, inputPrice: 0.14, outputPrice: 0.28, discount: '-98%' },
+  'tencent/hy3-paid': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 42.2, inputPrice: 0.14, outputPrice: 0.58 },
+  'z-ai/glm-5.3-flash': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 57.5, inputPrice: 0.15, outputPrice: 0.50 },
+  'Qwen/Qwen3.8-Flash': { planTier: 'go', planLabel: 'Go/GOAT', inputPrice: 0.16, outputPrice: 0.47 },
+  'gpt-5.6-luna': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 52.3, inputPrice: 0.20, outputPrice: 1.20 },
+  'stepfun/Step-3.7-Flash': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 30.9, inputPrice: 0.20, outputPrice: 1.15 },
+  'deepseek/deepseek-v4-flash': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 52.0, inputPrice: 0.22, outputPrice: 0.66 },
+  'deepseek/deepseek-v4-flash-vision-exp': { planTier: 'go', planLabel: 'Go/GOAT', inputPrice: 0.22, outputPrice: 0.66 },
+  'MiniMaxAI/MiniMax-M2.5': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 34.5, inputPrice: 0.30, outputPrice: 1.20 },
+  'MiniMaxAI/MiniMax-M2.7': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 38.9, inputPrice: 0.30, outputPrice: 1.20 },
+  'MiniMaxAI/MiniMax-M3': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 45.4, inputPrice: 0.30, outputPrice: 1.20, discount: '-50%' },
+  'Qwen/Qwen3.7-Plus': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 39.4, inputPrice: 0.40, outputPrice: 1.60 },
+  'Qwen/Qwen3.8-27B': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 52.0, inputPrice: 0.40, outputPrice: 3.00 },
+  'xiaomi/mimo-v2.5-pro': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 42.9, inputPrice: 0.435, outputPrice: 0.87, discount: '-99%' },
+  'thinkingmachines/inkling-small': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 41.2, inputPrice: 0.50, outputPrice: 1.20 },
+  'Qwen/Qwen3.6-Plus': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 40.5, inputPrice: 0.50, outputPrice: 3.00 },
+  'moonshotai/Kimi-K2.5': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 36.0, inputPrice: 0.60, outputPrice: 3.00 },
+  'nvidia/nemotron-3-ultra-550b-a55b': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 38.3, inputPrice: 0.60, outputPrice: 2.40 },
+  'deepseek/deepseek-v4-pro': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 53.2, inputPrice: 0.66, outputPrice: 1.98 },
+  'google/gemini-3.7-flash': { planTier: 'goat', planLabel: 'GOAT', intelligence: 56.0, inputPrice: 0.75, outputPrice: 3.75, discount: '-50%' },
+  'tencent/hy4-preview': { planTier: 'go', planLabel: 'Go/GOAT', inputPrice: 0.834, outputPrice: 2.501 },
+  'moonshotai/Kimi-K2.6': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 45.1, inputPrice: 0.95, outputPrice: 4.00 },
+  'moonshotai/Kimi-K2.7-Code': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 43.0, inputPrice: 0.95, outputPrice: 4.00 },
+  'zai-org/GLM-5': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 40.6, inputPrice: 1.00, outputPrice: 3.20 },
+  'thinkingmachines/inkling': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 42.3, inputPrice: 1.00, outputPrice: 4.05 },
+  'meta/muse-spark-1.2': { planTier: 'goat', planLabel: 'GOAT', intelligence: 56.8, inputPrice: 1.25, outputPrice: 4.25 },
+  'Qwen/Qwen3.6-Max-Preview': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 41.1, inputPrice: 1.30, outputPrice: 7.80 },
+  'zai-org/GLM-5.1': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 41.0, inputPrice: 1.40, outputPrice: 4.40 },
+  'zai-org/GLM-5.2': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 52.6, inputPrice: 1.40, outputPrice: 4.40 },
+  'zai-org/GLM-5.3': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 59.5, inputPrice: 1.40, outputPrice: 4.40 },
+  'moonshotai/Kimi-K2.7-Code-Highspeed': { planTier: 'go', planLabel: 'Go/GOAT', inputPrice: 1.90, outputPrice: 8.00 },
+  'xai/grok-4.5': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 55.8, inputPrice: 2.00, outputPrice: 6.00 },
+  'xai/grok-4.6': { planTier: 'goat', planLabel: 'GOAT', intelligence: 60.9, inputPrice: 2.00, outputPrice: 6.00 },
+  'Qwen/Qwen3.8-Max': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 58.1, inputPrice: 2.00, outputPrice: 6.00 },
+  'Qwen/Qwen3.7-Max': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 46.7, inputPrice: 2.50, outputPrice: 7.50 },
+  'zai-org/GLM-5.2-Fast': { planTier: 'go', planLabel: 'Go/GOAT', inputPrice: 3.00, outputPrice: 10.25 },
+  'moonshotai/Kimi-K3': { planTier: 'go', planLabel: 'Go/GOAT', intelligence: 59.7, inputPrice: 3.00, outputPrice: 15.00 },
+  'gpt-5.6-sol': { planTier: 'goat', planLabel: 'GOAT', intelligence: 60.9, inputPrice: 5.00, outputPrice: 30.00 },
 
-  // Go / GOAT Models
-  'deepseek/deepseek-v4-pro': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
-  'deepseek/deepseek-v4-flash': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
-  'deepseek/deepseek-v4-flash-vision-exp': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
-  'moonshotai/Kimi-K3': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
-  'moonshotai/Kimi-K2.7-Code': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
-  'moonshotai/Kimi-K2.7-Code-Highspeed': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
-  'Qwen/Qwen3.8-Max': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
-  'Qwen/Qwen3.8-27B': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
-  'Qwen/Qwen3.8-Flash': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
-  'z-ai/glm-5.3-flash': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
-  'zai-org/GLM-5.3': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
-  'MiniMaxAI/MiniMax-M3': { planTier: 'go', planLabel: 'Go / GOAT', dealLabel: '50% off', priceComment: 'GOATプラン利用可' },
-  'stepfun/Step-3.7-Flash': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
-  'tencent/hy4-preview': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
-  'xiaomi/mimo-v2.5-pro': { planTier: 'go', planLabel: 'Go / GOAT', dealLabel: '99% off', priceComment: 'GOATプラン利用可' },
-  'nvidia/nemotron-3-ultra-550b-a55b': { planTier: 'go', planLabel: 'Go / GOAT' },
-  'thinkingmachines/inkling': { planTier: 'go', planLabel: 'Go / GOAT' },
-
-  // Pro Tier
-  'claude-sonnet-5': { planTier: 'pro', planLabel: 'Pro対象', priceComment: 'Pro以上' },
-  'claude-sonnet-4-6': { planTier: 'pro', planLabel: 'Pro対象', priceComment: 'Pro以上' },
-  'claude-haiku-4-5-20251001': { planTier: 'pro', planLabel: 'Pro対象', priceComment: 'Pro以上' },
-  'gpt-5.6-terra': { planTier: 'pro', planLabel: 'Pro対象', priceComment: 'Pro以上' },
-  'gpt-5.5': { planTier: 'pro', planLabel: 'Pro対象', priceComment: 'Pro以上' },
-  'gpt-5.4': { planTier: 'pro', planLabel: 'Pro対象', priceComment: 'Pro以上' },
-  'gpt-5.4-mini': { planTier: 'pro', planLabel: 'Pro対象', priceComment: 'Pro以上' },
-  'gpt-5.3-codex': { planTier: 'pro', planLabel: 'Pro対象', priceComment: 'Pro以上' },
-  'google/gemini-3.6-flash': { planTier: 'pro', planLabel: 'Pro対象', priceComment: 'Pro以上' },
-  'meta/muse-spark-1.1': { planTier: 'pro', planLabel: 'Pro対象', priceComment: 'Pro以上' },
-
-  // Provider / Max Tier
-  'claude-opus-5': { planTier: 'provider', planLabel: 'Provider/Max対象', priceComment: 'Provider以上' },
-  'claude-opus-4-8': { planTier: 'provider', planLabel: 'Provider/Max対象', priceComment: 'Provider以上' },
-  'claude-opus-4-7': { planTier: 'provider', planLabel: 'Provider/Max対象', priceComment: 'Provider以上' },
-  'claude-fable-5': { planTier: 'provider', planLabel: 'Provider/Max対象', priceComment: 'Provider以上' },
-  'sakana/fugu-ultra': { planTier: 'provider', planLabel: 'Provider/Max対象', priceComment: 'Provider以上' },
+  // Pro & Provider Flagships
+  'claude-sonnet-5': { planTier: 'pro', planLabel: 'Pro', intelligence: 62.5, inputPrice: 3.00, outputPrice: 15.00 },
+  'claude-sonnet-4-6': { planTier: 'pro', planLabel: 'Pro', intelligence: 60.0, inputPrice: 3.00, outputPrice: 15.00 },
+  'claude-opus-5': { planTier: 'provider', planLabel: 'Provider', intelligence: 65.0, inputPrice: 15.00, outputPrice: 75.00 },
+  'claude-opus-4-8': { planTier: 'provider', planLabel: 'Provider', intelligence: 63.5, inputPrice: 15.00, outputPrice: 75.00 },
+  'claude-haiku-4-5-20251001': { planTier: 'pro', planLabel: 'Pro', intelligence: 48.0, inputPrice: 1.00, outputPrice: 5.00 },
+  'gpt-5.6-terra': { planTier: 'pro', planLabel: 'Pro', intelligence: 61.2, inputPrice: 3.00, outputPrice: 15.00 },
+  'gpt-5.5': { planTier: 'pro', planLabel: 'Pro', intelligence: 58.0, inputPrice: 2.50, outputPrice: 10.00 },
+  'google/gemini-3.6-flash': { planTier: 'pro', planLabel: 'Pro', intelligence: 54.0, inputPrice: 0.50, outputPrice: 1.50 },
+  'sakana/fugu-ultra': { planTier: 'provider', planLabel: 'Provider', intelligence: 58.0, inputPrice: 5.00, outputPrice: 20.00 },
 }
 
 /** Set of latest-generation model IDs to show by default. */
 export const LATEST_MODEL_IDS: ReadonlySet<string> = new Set([
-  // GOAT Flagships
+  // GOAT Flagships & Popular Models
   'gpt-5.6-luna',
   'gpt-5.6-sol',
   'google/gemini-3.7-flash',
@@ -162,6 +171,7 @@ export const LATEST_MODEL_IDS: ReadonlySet<string> = new Set([
   'moonshotai/Kimi-K2.7-Code',
   'Qwen/Qwen3.8-Max',
   'Qwen/Qwen3.8-Flash',
+  'Qwen/Qwen3.8-27B',
   'z-ai/glm-5.3-flash',
   'zai-org/GLM-5.3',
   'MiniMaxAI/MiniMax-M3',
@@ -190,28 +200,37 @@ export function formatContext(contextWindow: number | undefined): string | undef
   if (contextWindow >= 1_000_000) {
     const m = contextWindow / 1_000_000
     const rounded = Math.round(m * 10) / 10
-    return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}M ctx`
+    return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}M`
   }
-  return `${Math.floor(contextWindow / 1_000)}K ctx`
+  return `${Math.floor(contextWindow / 1_000)}K`
 }
 
 export function buildModelDescription(modelId: string, contextWindow?: number): string {
   const parts: string[] = []
-  const pricing = KNOWN_PRICING[modelId]
+  const stats = KNOWN_STATS[modelId]
 
-  if (pricing) {
-    let tierText = `[${pricing.planLabel}]`
-    if (pricing.dealLabel) {
-      tierText += ` (${pricing.dealLabel})`
+  // 1. Pricing / In-Out
+  if (stats) {
+    if (stats.inputPrice === 'free') {
+      parts.push('Free')
+    } else if (typeof stats.inputPrice === 'number') {
+      const inStr = `$${stats.inputPrice}`
+      const outStr = typeof stats.outputPrice === 'number' ? `/$${stats.outputPrice}` : ''
+      const disc = stats.discount ? ` (${stats.discount})` : ''
+      parts.push(`In ${inStr}${outStr}${disc}`)
     }
-    parts.push(tierText)
-  } else {
-    parts.push('[Other]')
   }
 
+  // 2. Intelligence Score
+  if (stats?.intelligence !== undefined) {
+    parts.push(`IQ ${stats.intelligence}`)
+  }
+
+  // 3. Context
   const ctxStr = formatContext(contextWindow)
   if (ctxStr) parts.push(ctxStr)
 
+  // 4. Modalities & Capabilities
   if (KNOWN_IMAGE_MODELS.has(modelId)) {
     parts.push('Vision')
   }
@@ -225,7 +244,6 @@ export function buildModelDescription(modelId: string, contextWindow?: number): 
 }
 
 export const STATIC_MODELS: CommandCodeStaticModel[] = [
-  // --- Flagship GOAT & Go Models ---
   {
     id: 'gpt-5.6-luna',
     name: 'GPT-5.6 Luna',
@@ -335,6 +353,18 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
     name: 'Qwen 3.8 Flash',
     description: buildModelDescription('Qwen/Qwen3.8-Flash', 1000000),
     contextWindow: 1000000,
+    maxTokens: 65536,
+    protocol: 'openai',
+    inputModalities: ['text', 'image'],
+    reasoningEfforts: [ReasoningEffortId('low'), ReasoningEffortId('medium'), ReasoningEffortId('xhigh')],
+    defaultEffort: ReasoningEffortId('medium'),
+    supportsTools: true,
+  },
+  {
+    id: 'Qwen/Qwen3.8-27B',
+    name: 'Qwen 3.8 27B',
+    description: buildModelDescription('Qwen/Qwen3.8-27B', 262144),
+    contextWindow: 262144,
     maxTokens: 65536,
     protocol: 'openai',
     inputModalities: ['text', 'image'],
@@ -680,19 +710,33 @@ export function toModelInfo(provider: string, model: LlmDiscoveredModel): LlmMod
   }
 }
 
-/** Sort comparator: GOAT/Go models first, then Pro, then Provider, then alphabetically. */
+/** Sort comparator: Cheapest / Tier first (Free -> Go/GOAT ascending price -> Pro -> Provider). */
 export function compareModels(a: LlmDiscoveredModel, b: LlmDiscoveredModel): number {
-  const rank = (id: string): number => {
-    const p = KNOWN_PRICING[id]?.planTier
-    if (p === 'free') return 0
-    if (p === 'go' || p === 'goat') return 1
-    if (p === 'pro') return 2
-    if (p === 'provider') return 3
+  const statsA = KNOWN_STATS[a.id]
+  const statsB = KNOWN_STATS[b.id]
+
+  const rankTier = (tier?: string): number => {
+    if (tier === 'free') return 0
+    if (tier === 'go' || tier === 'goat') return 1
+    if (tier === 'pro') return 2
+    if (tier === 'provider') return 3
     return 4
   }
-  const rA = rank(a.id)
-  const rB = rank(b.id)
+
+  const rA = rankTier(statsA?.planTier)
+  const rB = rankTier(statsB?.planTier)
   if (rA !== rB) return rA - rB
+
+  // Compare input price within same tier
+  const priceVal = (p?: number | 'free') => {
+    if (p === 'free') return 0
+    if (typeof p === 'number') return p
+    return 999
+  }
+  const pA = priceVal(statsA?.inputPrice)
+  const pB = priceVal(statsB?.inputPrice)
+  if (pA !== pB) return pA - pB
+
   const nameA = a.name ?? a.id
   const nameB = b.name ?? b.id
   return nameA.localeCompare(nameB)
