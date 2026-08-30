@@ -22,7 +22,9 @@ import type {
 } from './types.ts'
 import {
   FALLBACK_MODELS,
+  LATEST_MODEL_IDS,
   STATIC_CAPABILITIES,
+  compareModels,
   resolveCommandCodeModel,
   resolveModelProtocol,
   toModelInfo,
@@ -74,8 +76,11 @@ export class CommandCodeAdapter extends LlmAdapter {
         }
       }
     }
-    const models = catalog && catalog.length > 0 ? catalog : FALLBACK_MODELS
-    return models.map((m) => toModelInfo(provider, m))
+    const all = catalog && catalog.length > 0 ? catalog : FALLBACK_MODELS
+    const filtered = all.filter((m) => LATEST_MODEL_IDS.has(m.id))
+    const selected = filtered.length > 0 ? filtered : all
+    const sorted = [...selected].sort(compareModels)
+    return sorted.map((m) => toModelInfo(provider, m))
   }
 
   override async resolveModel(

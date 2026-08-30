@@ -87,73 +87,139 @@ export const KNOWN_IMAGE_MODELS: ReadonlySet<string> = new Set([
   'z-ai/glm-5.3-flash',
 ])
 
-export const KNOWN_PLANS: Readonly<Record<string, string>> = {
-  // Go (40)
-  'MiniMaxAI/MiniMax-M2.5': 'go',
-  'MiniMaxAI/MiniMax-M2.7': 'go',
-  'MiniMaxAI/MiniMax-M3': 'go',
-  'Qwen/Qwen3.6-Max-Preview': 'go',
-  'Qwen/Qwen3.6-Plus': 'go',
-  'Qwen/Qwen3.7-Flash': 'go',
-  'Qwen/Qwen3.7-Max': 'go',
-  'Qwen/Qwen3.7-Plus': 'go',
-  'Qwen/Qwen3.8-27B': 'go',
-  'Qwen/Qwen3.8-Flash': 'go',
-  'Qwen/Qwen3.8-Max': 'go',
-  'deepseek/deepseek-v4-flash': 'go',
-  'deepseek/deepseek-v4-flash-vision-exp': 'go',
-  'deepseek/deepseek-v4-pro': 'go',
-  'gpt-5.6-luna': 'go',
-  'meta/muse-spark-1.2-contributor': 'go',
-  'minimax/minimax-m2.7-free': 'go',
-  'minimax/minimax-m3-free': 'go',
-  'moonshotai/Kimi-K2.5': 'go',
-  'moonshotai/Kimi-K2.6': 'go',
-  'moonshotai/Kimi-K2.7-Code': 'go',
-  'moonshotai/Kimi-K2.7-Code-Highspeed': 'go',
-  'moonshotai/Kimi-K3': 'go',
-  'nvidia/nemotron-3-ultra-550b-a55b': 'go',
-  'poolside/laguna-s-2.1-free': 'go',
-  'stepfun/Step-3.5-Flash': 'go',
-  'stepfun/Step-3.7-Flash': 'go',
-  'tencent/hy3-paid': 'go',
-  'tencent/hy4-preview': 'go',
-  'thinkingmachines/inkling': 'go',
-  'thinkingmachines/inkling-small': 'go',
-  'xai/grok-4.5': 'go',
-  'xiaomi/mimo-v2.5': 'go',
-  'xiaomi/mimo-v2.5-pro': 'go',
-  'z-ai/glm-5.3-flash': 'go',
-  'zai-org/GLM-5': 'go',
-  'zai-org/GLM-5.1': 'go',
-  'zai-org/GLM-5.2': 'go',
-  'zai-org/GLM-5.2-Fast': 'go',
-  'zai-org/GLM-5.3': 'go',
-  // GOAT (4 more)
-  'google/gemini-3.7-flash': 'goat',
-  'gpt-5.6-sol': 'goat',
-  'meta/muse-spark-1.2': 'goat',
-  'xai/grok-4.6': 'goat',
-  // Pro (13 more)
-  'claude-haiku-4-5-20251001': 'pro',
-  'claude-sonnet-4-6': 'pro',
-  'claude-sonnet-5': 'pro',
-  'google/gemini-3.1-flash-lite': 'pro',
-  'google/gemini-3.5-flash': 'pro',
-  'google/gemini-3.5-flash-lite': 'pro',
-  'google/gemini-3.6-flash': 'pro',
-  'gpt-5.3-codex': 'pro',
-  'gpt-5.4': 'pro',
-  'gpt-5.4-mini': 'pro',
-  'gpt-5.5': 'pro',
-  'gpt-5.6-terra': 'pro',
-  'meta/muse-spark-1.1': 'pro',
-  // Provider / Max (5)
-  'claude-fable-5': 'provider',
-  'claude-opus-4-7': 'provider',
-  'claude-opus-4-8': 'provider',
-  'claude-opus-5': 'provider',
-  'sakana/fugu-ultra': 'provider',
+export interface ModelPricingFact {
+  planTier: 'free' | 'go' | 'goat' | 'pro' | 'provider'
+  planLabel: string
+  dealLabel?: string
+  priceComment?: string
+}
+
+export const KNOWN_PRICING: Readonly<Record<string, ModelPricingFact>> = {
+  // Free
+  'minimax/minimax-m3-free': { planTier: 'free', planLabel: 'FREE', dealLabel: '無料' },
+  'minimax/minimax-m2.7-free': { planTier: 'free', planLabel: 'FREE', dealLabel: '無料' },
+  'poolside/laguna-s-2.1-free': { planTier: 'free', planLabel: 'FREE', dealLabel: '無料' },
+
+  // GOAT Flagships
+  'gpt-5.6-luna': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
+  'gpt-5.6-sol': { planTier: 'goat', planLabel: 'GOAT', priceComment: 'GOATプラン利用可' },
+  'google/gemini-3.7-flash': { planTier: 'goat', planLabel: 'GOAT', dealLabel: '50% off', priceComment: 'GOATプラン利用可' },
+  'xai/grok-4.6': { planTier: 'goat', planLabel: 'GOAT', priceComment: 'GOATプラン利用可' },
+  'xai/grok-4.5': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
+  'meta/muse-spark-1.2': { planTier: 'goat', planLabel: 'GOAT', priceComment: 'GOATプラン利用可' },
+
+  // Go / GOAT Models
+  'deepseek/deepseek-v4-pro': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
+  'deepseek/deepseek-v4-flash': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
+  'deepseek/deepseek-v4-flash-vision-exp': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
+  'moonshotai/Kimi-K3': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
+  'moonshotai/Kimi-K2.7-Code': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
+  'moonshotai/Kimi-K2.7-Code-Highspeed': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
+  'Qwen/Qwen3.8-Max': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
+  'Qwen/Qwen3.8-27B': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
+  'Qwen/Qwen3.8-Flash': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
+  'z-ai/glm-5.3-flash': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
+  'zai-org/GLM-5.3': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
+  'MiniMaxAI/MiniMax-M3': { planTier: 'go', planLabel: 'Go / GOAT', dealLabel: '50% off', priceComment: 'GOATプラン利用可' },
+  'stepfun/Step-3.7-Flash': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
+  'tencent/hy4-preview': { planTier: 'go', planLabel: 'Go / GOAT', priceComment: 'GOATプラン利用可' },
+  'xiaomi/mimo-v2.5-pro': { planTier: 'go', planLabel: 'Go / GOAT', dealLabel: '99% off', priceComment: 'GOATプラン利用可' },
+  'nvidia/nemotron-3-ultra-550b-a55b': { planTier: 'go', planLabel: 'Go / GOAT' },
+  'thinkingmachines/inkling': { planTier: 'go', planLabel: 'Go / GOAT' },
+
+  // Pro Tier
+  'claude-sonnet-5': { planTier: 'pro', planLabel: 'Pro対象', priceComment: 'Pro以上' },
+  'claude-sonnet-4-6': { planTier: 'pro', planLabel: 'Pro対象', priceComment: 'Pro以上' },
+  'claude-haiku-4-5-20251001': { planTier: 'pro', planLabel: 'Pro対象', priceComment: 'Pro以上' },
+  'gpt-5.6-terra': { planTier: 'pro', planLabel: 'Pro対象', priceComment: 'Pro以上' },
+  'gpt-5.5': { planTier: 'pro', planLabel: 'Pro対象', priceComment: 'Pro以上' },
+  'gpt-5.4': { planTier: 'pro', planLabel: 'Pro対象', priceComment: 'Pro以上' },
+  'gpt-5.4-mini': { planTier: 'pro', planLabel: 'Pro対象', priceComment: 'Pro以上' },
+  'gpt-5.3-codex': { planTier: 'pro', planLabel: 'Pro対象', priceComment: 'Pro以上' },
+  'google/gemini-3.6-flash': { planTier: 'pro', planLabel: 'Pro対象', priceComment: 'Pro以上' },
+  'meta/muse-spark-1.1': { planTier: 'pro', planLabel: 'Pro対象', priceComment: 'Pro以上' },
+
+  // Provider / Max Tier
+  'claude-opus-5': { planTier: 'provider', planLabel: 'Provider/Max対象', priceComment: 'Provider以上' },
+  'claude-opus-4-8': { planTier: 'provider', planLabel: 'Provider/Max対象', priceComment: 'Provider以上' },
+  'claude-opus-4-7': { planTier: 'provider', planLabel: 'Provider/Max対象', priceComment: 'Provider以上' },
+  'claude-fable-5': { planTier: 'provider', planLabel: 'Provider/Max対象', priceComment: 'Provider以上' },
+  'sakana/fugu-ultra': { planTier: 'provider', planLabel: 'Provider/Max対象', priceComment: 'Provider以上' },
+}
+
+/** Set of latest-generation model IDs to show by default. */
+export const LATEST_MODEL_IDS: ReadonlySet<string> = new Set([
+  // GOAT Flagships
+  'gpt-5.6-luna',
+  'gpt-5.6-sol',
+  'google/gemini-3.7-flash',
+  'xai/grok-4.6',
+  'xai/grok-4.5',
+  'deepseek/deepseek-v4-pro',
+  'deepseek/deepseek-v4-flash',
+  'moonshotai/Kimi-K3',
+  'moonshotai/Kimi-K2.7-Code',
+  'Qwen/Qwen3.8-Max',
+  'Qwen/Qwen3.8-Flash',
+  'z-ai/glm-5.3-flash',
+  'zai-org/GLM-5.3',
+  'MiniMaxAI/MiniMax-M3',
+  'minimax/minimax-m3-free',
+  'meta/muse-spark-1.2',
+  'stepfun/Step-3.7-Flash',
+  'tencent/hy4-preview',
+  'xiaomi/mimo-v2.5-pro',
+  // Pro / Provider Flagships
+  'claude-sonnet-5',
+  'claude-sonnet-4-6',
+  'claude-opus-5',
+  'claude-opus-4-8',
+  'claude-haiku-4-5-20251001',
+  'gpt-5.6-terra',
+  'gpt-5.5',
+  'google/gemini-3.6-flash',
+  'sakana/fugu-ultra',
+])
+
+export function formatContext(contextWindow: number | undefined): string | undefined {
+  if (contextWindow === undefined || !Number.isFinite(contextWindow) || contextWindow <= 0) {
+    return undefined
+  }
+  if (contextWindow >= 1_000_000) {
+    const m = contextWindow / 1_000_000
+    const rounded = Math.round(m * 10) / 10
+    return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}M ctx`
+  }
+  return `${Math.floor(contextWindow / 1_000)}K ctx`
+}
+
+export function buildModelDescription(modelId: string, contextWindow?: number): string {
+  const parts: string[] = []
+  const pricing = KNOWN_PRICING[modelId]
+
+  if (pricing) {
+    let tierText = `[${pricing.planLabel}]`
+    if (pricing.dealLabel) {
+      tierText += ` (${pricing.dealLabel})`
+    }
+    parts.push(tierText)
+  } else {
+    parts.push('[Other]')
+  }
+
+  const ctxStr = formatContext(contextWindow)
+  if (ctxStr) parts.push(ctxStr)
+
+  if (KNOWN_IMAGE_MODELS.has(modelId)) {
+    parts.push('Vision')
+  }
+
+  const efforts = KNOWN_EFFORTS[modelId]
+  if (efforts && efforts.length > 0) {
+    parts.push('Reasoning')
+  }
+
+  return parts.join(' · ')
 }
 
 export const STATIC_MODELS: CommandCodeStaticModel[] = [
@@ -161,7 +227,7 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
   {
     id: 'gpt-5.6-luna',
     name: 'GPT-5.6 Luna',
-    description: 'Command Code GPT-5.6 Luna (1M context, reasoning, vision)',
+    description: buildModelDescription('gpt-5.6-luna', 1050000),
     contextWindow: 1050000,
     maxTokens: 65536,
     protocol: 'openai',
@@ -173,7 +239,7 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
   {
     id: 'gpt-5.6-sol',
     name: 'GPT-5.6 Sol',
-    description: 'Command Code GPT-5.6 Sol (1M context, reasoning, vision)',
+    description: buildModelDescription('gpt-5.6-sol', 1050000),
     contextWindow: 1050000,
     maxTokens: 65536,
     protocol: 'openai',
@@ -185,7 +251,7 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
   {
     id: 'google/gemini-3.7-flash',
     name: 'Gemini 3.7 Flash',
-    description: 'Google Gemini 3.7 Flash (1M context, vision, reasoning)',
+    description: buildModelDescription('google/gemini-3.7-flash', 1048576),
     contextWindow: 1048576,
     maxTokens: 65536,
     protocol: 'openai',
@@ -197,7 +263,7 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
   {
     id: 'xai/grok-4.6',
     name: 'Grok 4.6',
-    description: 'xAI Grok 4.6 (500K context, reasoning)',
+    description: buildModelDescription('xai/grok-4.6', 500000),
     contextWindow: 500000,
     maxTokens: 65536,
     protocol: 'openai',
@@ -209,7 +275,7 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
   {
     id: 'deepseek/deepseek-v4-pro',
     name: 'DeepSeek V4 Pro',
-    description: 'DeepSeek V4 Pro (1M context, reasoning)',
+    description: buildModelDescription('deepseek/deepseek-v4-pro', 1000000),
     contextWindow: 1000000,
     maxTokens: 65536,
     protocol: 'openai',
@@ -221,7 +287,7 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
   {
     id: 'deepseek/deepseek-v4-flash',
     name: 'DeepSeek V4 Flash',
-    description: 'DeepSeek V4 Flash (1M context, reasoning)',
+    description: buildModelDescription('deepseek/deepseek-v4-flash', 1000000),
     contextWindow: 1000000,
     maxTokens: 65536,
     protocol: 'openai',
@@ -233,7 +299,7 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
   {
     id: 'moonshotai/Kimi-K3',
     name: 'Kimi K3',
-    description: 'Moonshot AI Kimi K3 (1M context, thinking, vision)',
+    description: buildModelDescription('moonshotai/Kimi-K3', 1000000),
     contextWindow: 1000000,
     maxTokens: 65536,
     protocol: 'openai',
@@ -243,7 +309,7 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
   {
     id: 'moonshotai/Kimi-K2.7-Code',
     name: 'Kimi K2.7 Code',
-    description: 'Moonshot AI Kimi K2.7 Code (256K context, vision)',
+    description: buildModelDescription('moonshotai/Kimi-K2.7-Code', 256000),
     contextWindow: 256000,
     maxTokens: 65536,
     protocol: 'openai',
@@ -253,7 +319,7 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
   {
     id: 'Qwen/Qwen3.8-Max',
     name: 'Qwen 3.8 Max',
-    description: 'Alibaba Qwen 3.8 Max (1M context, reasoning, vision)',
+    description: buildModelDescription('Qwen/Qwen3.8-Max', 1000000),
     contextWindow: 1000000,
     maxTokens: 65536,
     protocol: 'openai',
@@ -265,7 +331,7 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
   {
     id: 'Qwen/Qwen3.8-Flash',
     name: 'Qwen 3.8 Flash',
-    description: 'Alibaba Qwen 3.8 Flash (1M context, reasoning, vision)',
+    description: buildModelDescription('Qwen/Qwen3.8-Flash', 1000000),
     contextWindow: 1000000,
     maxTokens: 65536,
     protocol: 'openai',
@@ -277,7 +343,7 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
   {
     id: 'z-ai/glm-5.3-flash',
     name: 'GLM-5.3 Flash',
-    description: 'Zhipu GLM-5.3 Flash (1M context, reasoning, vision)',
+    description: buildModelDescription('z-ai/glm-5.3-flash', 1048576),
     contextWindow: 1048576,
     maxTokens: 65536,
     protocol: 'openai',
@@ -289,7 +355,7 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
   {
     id: 'zai-org/GLM-5.3',
     name: 'GLM-5.3',
-    description: 'Zhipu GLM-5.3 (1M context, reasoning)',
+    description: buildModelDescription('zai-org/GLM-5.3', 1000000),
     contextWindow: 1000000,
     maxTokens: 65536,
     protocol: 'openai',
@@ -301,7 +367,17 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
   {
     id: 'MiniMaxAI/MiniMax-M3',
     name: 'MiniMax M3',
-    description: 'MiniMax M3 (1M context, thinking, vision)',
+    description: buildModelDescription('MiniMaxAI/MiniMax-M3', 1000000),
+    contextWindow: 1000000,
+    maxTokens: 65536,
+    protocol: 'openai',
+    inputModalities: ['text', 'image'],
+    supportsTools: true,
+  },
+  {
+    id: 'minimax/minimax-m3-free',
+    name: 'MiniMax M3 (Free)',
+    description: buildModelDescription('minimax/minimax-m3-free', 1000000),
     contextWindow: 1000000,
     maxTokens: 65536,
     protocol: 'openai',
@@ -311,7 +387,7 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
   {
     id: 'xai/grok-4.5',
     name: 'Grok 4.5',
-    description: 'xAI Grok 4.5 (500K context, vision, reasoning)',
+    description: buildModelDescription('xai/grok-4.5', 500000),
     contextWindow: 500000,
     maxTokens: 65536,
     protocol: 'openai',
@@ -323,7 +399,7 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
   {
     id: 'meta/muse-spark-1.2',
     name: 'Muse Spark 1.2',
-    description: 'Meta Muse Spark 1.2 (1M context, thinking, vision)',
+    description: buildModelDescription('meta/muse-spark-1.2', 1048576),
     contextWindow: 1048576,
     maxTokens: 65536,
     protocol: 'openai',
@@ -333,7 +409,7 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
   {
     id: 'stepfun/Step-3.7-Flash',
     name: 'Step 3.7 Flash',
-    description: 'StepFun Step 3.7 Flash (256K context, vision)',
+    description: buildModelDescription('stepfun/Step-3.7-Flash', 256000),
     contextWindow: 256000,
     maxTokens: 65536,
     protocol: 'openai',
@@ -343,7 +419,7 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
   {
     id: 'tencent/hy4-preview',
     name: 'Tencent Hy4 Preview',
-    description: 'Tencent Hy4 Preview (1M context, thinking)',
+    description: buildModelDescription('tencent/hy4-preview', 1048576),
     contextWindow: 1048576,
     maxTokens: 65536,
     protocol: 'openai',
@@ -353,7 +429,7 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
   {
     id: 'xiaomi/mimo-v2.5-pro',
     name: 'MiMo V2.5 Pro',
-    description: 'Xiaomi MiMo V2.5 Pro (1M context)',
+    description: buildModelDescription('xiaomi/mimo-v2.5-pro', 1000000),
     contextWindow: 1000000,
     maxTokens: 65536,
     protocol: 'openai',
@@ -364,7 +440,7 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
   {
     id: 'claude-sonnet-5',
     name: 'Claude Sonnet 5',
-    description: 'Anthropic Claude Sonnet 5 (1M context, reasoning, vision)',
+    description: buildModelDescription('claude-sonnet-5', 1000000),
     contextWindow: 1000000,
     maxTokens: 65536,
     protocol: 'anthropic',
@@ -376,7 +452,7 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
   {
     id: 'claude-sonnet-4-6',
     name: 'Claude Sonnet 4.6',
-    description: 'Anthropic Claude Sonnet 4.6 (1M context, reasoning, vision)',
+    description: buildModelDescription('claude-sonnet-4-6', 1000000),
     contextWindow: 1000000,
     maxTokens: 65536,
     protocol: 'anthropic',
@@ -388,7 +464,7 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
   {
     id: 'claude-opus-5',
     name: 'Claude Opus 5',
-    description: 'Anthropic Claude Opus 5 (1M context, reasoning, vision)',
+    description: buildModelDescription('claude-opus-5', 1000000),
     contextWindow: 1000000,
     maxTokens: 65536,
     protocol: 'anthropic',
@@ -400,7 +476,7 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
   {
     id: 'claude-opus-4-8',
     name: 'Claude Opus 4.8',
-    description: 'Anthropic Claude Opus 4.8 (1M context, reasoning, vision)',
+    description: buildModelDescription('claude-opus-4-8', 1000000),
     contextWindow: 1000000,
     maxTokens: 65536,
     protocol: 'anthropic',
@@ -410,9 +486,19 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
     supportsTools: true,
   },
   {
+    id: 'claude-haiku-4-5-20251001',
+    name: 'Claude Haiku 4.5',
+    description: buildModelDescription('claude-haiku-4-5-20251001', 200000),
+    contextWindow: 200000,
+    maxTokens: 65536,
+    protocol: 'anthropic',
+    inputModalities: ['text', 'image'],
+    supportsTools: true,
+  },
+  {
     id: 'gpt-5.6-terra',
     name: 'GPT-5.6 Terra',
-    description: 'Command Code GPT-5.6 Terra (1M context, reasoning, vision)',
+    description: buildModelDescription('gpt-5.6-terra', 1050000),
     contextWindow: 1050000,
     maxTokens: 65536,
     protocol: 'openai',
@@ -424,7 +510,7 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
   {
     id: 'gpt-5.5',
     name: 'GPT-5.5',
-    description: 'Command Code GPT-5.5 (400K context, reasoning, vision)',
+    description: buildModelDescription('gpt-5.5', 400000),
     contextWindow: 400000,
     maxTokens: 65536,
     protocol: 'openai',
@@ -434,33 +520,21 @@ export const STATIC_MODELS: CommandCodeStaticModel[] = [
     supportsTools: true,
   },
   {
-    id: 'gpt-5.4',
-    name: 'GPT-5.4',
-    description: 'Command Code GPT-5.4 (400K context, reasoning, vision)',
-    contextWindow: 400000,
+    id: 'google/gemini-3.6-flash',
+    name: 'Gemini 3.6 Flash',
+    description: buildModelDescription('google/gemini-3.6-flash', 1000000),
+    contextWindow: 1000000,
     maxTokens: 65536,
     protocol: 'openai',
     inputModalities: ['text', 'image'],
-    reasoningEfforts: [ReasoningEffortId('low'), ReasoningEffortId('medium'), ReasoningEffortId('high'), ReasoningEffortId('xhigh')],
-    defaultEffort: ReasoningEffortId('medium'),
-    supportsTools: true,
-  },
-  {
-    id: 'gpt-5.3-codex',
-    name: 'GPT-5.3 Codex',
-    description: 'Command Code GPT-5.3 Codex (400K context, reasoning, vision)',
-    contextWindow: 400000,
-    maxTokens: 65536,
-    protocol: 'openai',
-    inputModalities: ['text', 'image'],
-    reasoningEfforts: [ReasoningEffortId('low'), ReasoningEffortId('medium'), ReasoningEffortId('high'), ReasoningEffortId('xhigh')],
+    reasoningEfforts: [ReasoningEffortId('low'), ReasoningEffortId('medium'), ReasoningEffortId('high')],
     defaultEffort: ReasoningEffortId('medium'),
     supportsTools: true,
   },
   {
     id: 'sakana/fugu-ultra',
     name: 'Fugu Ultra',
-    description: 'Sakana AI Fugu Ultra (1M context, reasoning, vision)',
+    description: buildModelDescription('sakana/fugu-ultra', 1000000),
     contextWindow: 1000000,
     maxTokens: 65536,
     protocol: 'openai',
@@ -552,11 +626,11 @@ export function resolveCommandCodeModel(
   const staticEntry = STATIC_CAPABILITIES.get(modelId)
 
   const name = discovered?.name ?? staticEntry?.name ?? modelId
-  const description = staticEntry?.description
-  const hasImage = KNOWN_IMAGE_MODELS.has(modelId) || (staticEntry?.inputModalities?.includes('image') ?? false)
-  const inputModalities: readonly ModelModality[] = hasImage ? ['text', 'image'] : ['text']
   const contextWindow = discovered?.contextWindow ?? staticEntry?.contextWindow ?? config.defaultContextWindow ?? DEFAULT_CONTEXT_WINDOW
   const defaultMaxTokens = discovered?.maxTokens ?? staticEntry?.maxTokens ?? config.maxTokens ?? DEFAULT_MAX_TOKENS
+  const description = buildModelDescription(modelId, contextWindow)
+  const hasImage = KNOWN_IMAGE_MODELS.has(modelId) || (staticEntry?.inputModalities?.includes('image') ?? false)
+  const inputModalities: readonly ModelModality[] = hasImage ? ['text', 'image'] : ['text']
 
   const knownEfforts = KNOWN_EFFORTS[modelId] ?? (staticEntry?.reasoningEfforts?.map(e => String(e)))
   const reasoning = knownEfforts && knownEfforts.length > 0
@@ -584,11 +658,30 @@ export function resolveCommandCodeModel(
 export function toModelInfo(provider: string, model: LlmDiscoveredModel): LlmModelInfo {
   const staticEntry = STATIC_CAPABILITIES.get(model.id)
   const hasImage = KNOWN_IMAGE_MODELS.has(model.id) || (staticEntry?.inputModalities?.includes('image') ?? false)
+  const description = buildModelDescription(model.id, model.contextWindow ?? staticEntry?.contextWindow)
   return {
     provider,
     id: model.id,
     name: model.name ?? staticEntry?.name ?? model.id,
-    description: staticEntry?.description,
+    description,
     inputModalities: hasImage ? ['text', 'image'] : ['text'],
   }
+}
+
+/** Sort comparator: GOAT/Go models first, then Pro, then Provider, then alphabetically. */
+export function compareModels(a: LlmDiscoveredModel, b: LlmDiscoveredModel): number {
+  const rank = (id: string): number => {
+    const p = KNOWN_PRICING[id]?.planTier
+    if (p === 'free') return 0
+    if (p === 'go' || p === 'goat') return 1
+    if (p === 'pro') return 2
+    if (p === 'provider') return 3
+    return 4
+  }
+  const rA = rank(a.id)
+  const rB = rank(b.id)
+  if (rA !== rB) return rA - rB
+  const nameA = a.name ?? a.id
+  const nameB = b.name ?? b.id
+  return nameA.localeCompare(nameB)
 }
