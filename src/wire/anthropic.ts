@@ -1,5 +1,5 @@
-import type { ContentBlock, FinishReason, StreamChunk, TokenUsage } from '@deepseek-ai/dsh-llm'
-import { CallId, EMPTY_RESPONSE_CODE, LlmError } from '@deepseek-ai/dsh-llm'
+import type { ContentBlock, FinishReason, StreamChunk, TokenUsage, ToolCallId } from '@deepseek-ai/dsh-llm'
+import { EMPTY_RESPONSE_CODE, LlmError } from '@deepseek-ai/dsh-llm'
 import type { StreamModel } from '../types.ts'
 import type { SseEvent } from './sse.ts'
 
@@ -24,83 +24,72 @@ export async function* streamAnthropic(
   const activeBlocks = new Map<number, BlockState>()
 
   for await (const rawEvent of events) {
-    let payload: unknown = rawEvent
-    if (typeof rawEvent === 'object' && rawEvent !== null && 'data' in rawEvent) {
-      const dataStr = (rawEvent as SseEvent).data.trim()
-      if (dataStr === '[DONE]') break
-      try {
-        payload = JSON.parse(dataStr)
-      } catch {
-        continue
-      }
-    } else if (typeof rawEvent === 'string') {
-      const trimmed = rawEvent.trim()
-      if (trimmed === '[DONE]') break
-      try {
-        payload = JSON.parse(trimmed)
-      } catch {
-        continue
-      }
-    }
+    if (!rawEvent || typeof rawEvent !== 'object') continue
+    const event = rawEvent as Record<string, unknown>
+    const eventType = event.type as string | undefined
 
-    if (!payload || typeof payload !== 'object') continue
-    const chunk = payload as Record<string, any>
-
-    if (chunk.type === 'error' || chunk.error) {
-      const err = chunk.error ?? chunk
-      const errMsg = typeof err === 'string' ? err : err.message || 'Stream error'
-      throw new LlmError(errMsg, err.type || err.code || 'STREAM_ERROR')
-    }
-
-    if (chunk.type === 'message_start' && chunk.message) {
-      if (typeof chunk.message.usage?.input_tokens === 'number') {
-        inputTokens = chunk.message.usage.input_tokens
+    if (eventType === 'message_start') {
+      const message = event.message as Record<string, unknown> | undefined
+      const usage = message?.usage as Record<string, unknown> | undefined
+      if (usage) {
+        inputTokens = (usage.input_tokens as number) || 0
+        outputTokens = (usage.output_tokens as number) || 0
       }
-    } else if (chunk.type === 'content_block_start') {
-      const index = chunk.index ?? 0
-      const block = chunk.content_block
-      if (block?.type === 'text') {
-        activeBlocks.set(index, { index, type: 'text', text: block.text || '' })
-        yield { type: 'block-start', index, blockType: 'text' }
-      } else if (block?.type === 'thinking') {
-        activeBlocks.set(index, { index, type: 'reasoning', text: block.thinking || '' })
-        yield { type: 'block-start', index, blockType: 'reasoning' }
-      } else if (block?.type === 'tool_use') {
-        activeBlocks.set(index, {
+    } else if (eventType === 'content_block_start') {
+      const index = (event.index as number) ?? activeBlocks.size
+      const block = event.content_block as Record<string, unknown> | undefined
+      const blockType = block?.type as string | undefined
+
+      if (blockType === 'tool_use') {
+        const state: BlockState = {
           index,
           type: 'tool-call',
-          toolId: block.id,
-          toolName: block.name,
+          toolId: block?.id as string | undefined,
+          toolName: block?.name as string | undefined,
           toolArgs: '',
-        })
-        yield { type: 'block-start', index, blockType: 'tool-call' }
+        }
+        activeBlocks.set(index, state)
+        totalBlocks++
+      } else if (blockType === 'thinking') {
+        activeBlocks.set(index, { index, type: 'reasoning', text: '' })
+        totalBlocks++
+      } else {
+        activeBlocks.set(index, { index, type: 'text', text: '' })
+        totalBlocks++
       }
-    } else if (chunk.type === 'content_block_delta') {
-      const index = chunk.index ?? 0
-      const delta = chunk.delta
-      const state = activeBlocks.get(index)
+    } else if (eventType === 'content_block_delta') {
+      const index = (event.index as number) ?? 0
+      const delta = event.delta as Record<string, unknown> | undefined
+      const deltaType = delta?.type as string | undefined
 
-      if (delta?.type === 'text_delta') {
-        const text = delta.text || ''
-        if (state) state.text = (state.text || '') + text
-        yield { type: 'text-delta', index, text }
-      } else if (delta?.type === 'thinking_delta') {
-        const text = delta.thinking || ''
-        if (state) state.text = (state.text || '') + text
-        yield { type: 'reasoning-delta', index, text }
-      } else if (delta?.type === 'input_json_delta') {
-        const partialJson = delta.partial_json || ''
+      if (deltaType === 'text_delta') {
+        const text = (delta?.text as string) || ''
+        if (text) {
+          const state = activeBlocks.get(index)
+          if (state) state.text = (state.text || '') + text
+          yield { type: 'text-delta', text }
+        }
+      } else if (deltaType === 'thinking_delta') {
+        const reasoning = (delta?.thinking as string) || ''
+        if (reasoning) {
+          const state = activeBlocks.get(index)
+          if (state) state.text = (state.text || '') + reasoning
+          yield { type: 'reasoning-delta', text: reasoning }
+        }
+      } else if (deltaType === 'input_json_delta') {
+        const partialJson = (delta?.partial_json as string) || ''
+        const state = activeBlocks.get(index)
         if (state) state.toolArgs = (state.toolArgs || '') + partialJson
         yield {
           type: 'tool-call-delta',
           index,
-          id: CallId(state?.toolId || `call-${index}`),
+          id: (state?.toolId || `call-${index}`) as ToolCallId,
           ...(state?.toolName ? { name: state.toolName } : {}),
           argumentsDelta: partialJson,
         }
       }
-    } else if (chunk.type === 'content_block_stop') {
-      const index = chunk.index ?? 0
+    } else if (eventType === 'content_block_stop') {
+      const index = (event.index as number) ?? 0
       const state = activeBlocks.get(index)
       if (state) {
         let block: ContentBlock
@@ -111,7 +100,7 @@ export async function* streamAnthropic(
         } else {
           block = {
             type: 'tool-call',
-            id: CallId(state.toolId || `call-${index}`),
+            id: (state.toolId || `call-${index}`) as ToolCallId,
             name: state.toolName || '',
             arguments: state.toolArgs || '',
           }
@@ -120,11 +109,13 @@ export async function* streamAnthropic(
         totalBlocks++
         yield { type: 'block-end', index, block }
       }
-    } else if (chunk.type === 'message_delta') {
-      if (typeof chunk.usage?.output_tokens === 'number') {
-        outputTokens = chunk.usage.output_tokens
+    } else if (eventType === 'message_delta') {
+      const usage = event.usage as Record<string, unknown> | undefined
+      if (typeof usage?.output_tokens === 'number') {
+        outputTokens = usage.output_tokens as number
       }
-      const stopReason = chunk.delta?.stop_reason
+      const delta = event.delta as Record<string, unknown> | undefined
+      const stopReason = delta?.stop_reason as string | undefined
       if (stopReason) {
         switch (stopReason) {
           case 'tool_use':
@@ -153,7 +144,7 @@ export async function* streamAnthropic(
     } else {
       block = {
         type: 'tool-call',
-        id: CallId(state.toolId || `call-${index}`),
+        id: (state.toolId || `call-${index}`) as ToolCallId,
         name: state.toolName || '',
         arguments: state.toolArgs || '',
       }

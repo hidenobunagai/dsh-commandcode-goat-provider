@@ -13,12 +13,10 @@ import type {
   LlmDiscoveredModel,
   LlmModelDiscoveryRequest,
 } from '@deepseek-ai/dsh-llm'
-import {
-  deepEqualJson,
-  installSettingsSection,
-  settingsNamespace,
-} from '@deepseek-ai/dsh-settings'
+import type {} from '@deepseek-ai/dsh-settings'
 import { Config, DEFAULT_API_KEY_ENV, resolveConfig } from './config.ts'
+
+const deepEqualJson = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b)
 import type { CommandCodeConfig, ResolvedConnection, ResolveImage } from './types.ts'
 import {
   CommandCodeAdapter,
@@ -31,8 +29,7 @@ export const name = 'llm-commandcode-goat'
 export const inject = ['llm']
 export { Config }
 
-const NS_STRING = 'llm-commandcode-goat'
-const NS = settingsNamespace(NS_STRING)
+const NS = 'llm-commandcode-goat'
 
 export function apply(ctx: Context, config: CommandCodeConfig): void {
   let current: () => CommandCodeConfig = () => config
@@ -134,7 +131,7 @@ export function apply(ctx: Context, config: CommandCodeConfig): void {
     {
       provider: PROVIDER_ROUTE,
       displayName: PROVIDER_DISPLAY_NAME,
-      settingsNs: NS_STRING,
+      settingsNs: NS,
       settingsPath: [],
     },
   ])
@@ -149,7 +146,7 @@ export function apply(ctx: Context, config: CommandCodeConfig): void {
     registeredPolicy = policy
   }
 
-  ctx.llm.registerModelDiscovery(NS_STRING, async (req: LlmModelDiscoveryRequest, signal?: AbortSignal) => {
+  ctx.llm.registerModelDiscovery(NS, async (req: LlmModelDiscoveryRequest, signal?: AbortSignal) => {
     const activeConfig = getCurrentConfig()
     let apiKey: string | undefined = req.apiKey
     if (!apiKey) {
@@ -185,10 +182,12 @@ export function apply(ctx: Context, config: CommandCodeConfig): void {
     return () => abortController.abort()
   }, 'dsh-commandcode-goat-provider: model discovery warmup')
 
-  installSettingsSection(ctx, NS, Config, config, {
-    setSource: (source) => {
-      current = source
-    },
-    onChange: ensureRegistrationFacts,
+  ctx.inject(['settings'], (settingsCtx) => {
+    settingsCtx.settings.installSection(ctx, NS, Config, config, {
+      setSource: (source) => {
+        current = source
+      },
+      onChange: ensureRegistrationFacts,
+    })
   })
 }

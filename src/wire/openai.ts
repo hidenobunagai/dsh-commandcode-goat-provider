@@ -1,5 +1,5 @@
-import type { FinishReason, StreamChunk, TokenUsage } from '@deepseek-ai/dsh-llm'
-import { CallId, EMPTY_RESPONSE_CODE, LlmError } from '@deepseek-ai/dsh-llm'
+import type { FinishReason, StreamChunk, TokenUsage, ToolCallId } from '@deepseek-ai/dsh-llm'
+import { EMPTY_RESPONSE_CODE, LlmError } from '@deepseek-ai/dsh-llm'
 import type { StreamModel } from '../types.ts'
 import type { SseEvent } from './sse.ts'
 
@@ -56,7 +56,7 @@ export async function* streamOpenAi(
         index: tc.index,
         block: {
           type: 'tool-call',
-          id: CallId(tc.id),
+          id: tc.id as ToolCallId,
           name: tc.name,
           arguments: tc.arguments,
         },
@@ -173,7 +173,7 @@ export async function* streamOpenAi(
             yield {
               type: 'tool-call-delta',
               index: state.index,
-              id: CallId(state.id),
+              id: state.id as ToolCallId,
               ...(tc.function?.name ? { name: tc.function.name } : {}),
               argumentsDelta: argsDelta,
             }
