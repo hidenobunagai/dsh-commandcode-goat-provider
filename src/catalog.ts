@@ -205,6 +205,14 @@ export function formatContext(contextWindow: number | undefined): string | undef
   return `${Math.floor(contextWindow / 1_000)}K`
 }
 
+function formatPrice(val: number): string {
+  if (Number.isInteger(val)) return `$${val}.00`
+  const str = val.toString()
+  const parts = str.split('.')
+  if (parts[1]?.length === 1) return `$${val}0`
+  return `$${val}`
+}
+
 export function buildModelDescription(modelId: string, contextWindow?: number): string {
   const parts: string[] = []
   const stats = KNOWN_STATS[modelId]
@@ -214,8 +222,8 @@ export function buildModelDescription(modelId: string, contextWindow?: number): 
     if (stats.inputPrice === 'free') {
       parts.push('Free')
     } else if (typeof stats.inputPrice === 'number') {
-      const inStr = `$${stats.inputPrice}`
-      const outStr = typeof stats.outputPrice === 'number' ? `/$${stats.outputPrice}` : ''
+      const inStr = formatPrice(stats.inputPrice)
+      const outStr = typeof stats.outputPrice === 'number' ? `/${formatPrice(stats.outputPrice)}` : ''
       const disc = stats.discount ? ` (${stats.discount})` : ''
       parts.push(`In ${inStr}${outStr}${disc}`)
     }
