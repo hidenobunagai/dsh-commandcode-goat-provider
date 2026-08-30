@@ -44,17 +44,24 @@ export function apply(ctx: Context, config: CommandCodeConfig): void {
     const activeConfig = getCurrentConfig()
     const ref = credentialRef(activeConfig.apiKeyEnv ?? DEFAULT_API_KEY_ENV)
 
+    // Try managed credential store first; fall back to ambient launch
+    // environment so `COMMANDCODE_API_KEY=xxx dsh` keeps working even when
+    // the credentials service is present but the key is not stored there.
     const credentials = ctx.get('credentials')
     if (credentials !== undefined) {
-      const hit = await credentials.resolve(ref)
-      if (hit !== undefined && hit.value.length > 0) {
-        return assertUsableApiKey(hit.value, NS_STRING, ref)
+      try {
+        const hit = await credentials.resolve(ref)
+        if (hit !== undefined && hit.value.length > 0) {
+          return assertUsableApiKey(hit.value, NS_STRING, ref)
+        }
+      } catch {
+        // credential backend unavailable — try ambient next
       }
-    } else {
-      const ambient = launchEnvironmentOf(ctx).get(ref)
-      if (ambient !== undefined && ambient.value.length > 0) {
-        return assertUsableApiKey(ambient.value, NS_STRING, ref)
-      }
+    }
+
+    const ambient = launchEnvironmentOf(ctx).get(ref)
+    if (ambient !== undefined && ambient.value.length > 0) {
+      return assertUsableApiKey(ambient.value, NS_STRING, ref)
     }
 
     throw new LlmError(
@@ -76,6 +83,9 @@ export function apply(ctx: Context, config: CommandCodeConfig): void {
     }
   }
 
+  // `attachments` is intentionally NOT in `inject` — image input is optional.
+  // Requiring it would keep the whole plugin pending in hosts without that
+  // service (e.g. unit tests). The runtime check below is the contract.
   const resolveImage: ResolveImage = async (ref: ImageAttachmentRef, signal?: AbortSignal) => {
     const attachments = ctx.get('attachments')
     if (!attachments) {
@@ -103,6 +113,7 @@ export function apply(ctx: Context, config: CommandCodeConfig): void {
       baseURL: activeConfig.baseURL,
       apiKey,
       signal,
+      requestTimeoutMs: activeConfig.requestTimeoutMs,
     })
 
     if (models.length > 0) {
@@ -138,7 +149,7 @@ export function apply(ctx: Context, config: CommandCodeConfig): void {
     registeredPolicy = policy
   }
 
-  ctx.llm.registerModelDiscovery(NS_STRING, async (req: LlmModelDiscoveryRequest) => {
+  ctx.llm.registerModelDiscovery(NS_STRING, async (req: LlmModelDiscoveryRequest, signal?: AbortSignal) => {
     const activeConfig = getCurrentConfig()
     let apiKey: string | undefined = req.apiKey
     if (!apiKey) {
@@ -150,11 +161,15 @@ export function apply(ctx: Context, config: CommandCodeConfig): void {
     }
 
     const baseURL = req.baseURL ?? activeConfig.baseURL
+    // Prefer the carrier-provided signal (Remote path), fall back to the
+    // legacy request-embedded one for backward compat with older hosts.
+    const effectiveSignal = signal ?? req.signal
     const client = new CommandCodeApiClient()
     const models = await client.listModels({
       baseURL,
       apiKey,
-      signal: req.signal,
+      signal: effectiveSignal,
+      requestTimeoutMs: activeConfig.requestTimeoutMs,
     })
 
     if (models.length > 0) {
@@ -165,7 +180,9 @@ export function apply(ctx: Context, config: CommandCodeConfig): void {
 
   // Warm up dynamic model discovery in background
   ctx.effect(() => {
-    void fetchDynamicCatalog().catch(() => {})
+    const abortController = new AbortController()
+    void fetchDynamicCatalog(abortController.signal).catch(() => {})
+    return () => abortController.abort()
   }, 'dsh-commandcode-goat-provider: model discovery warmup')
 
   installSettingsSection(ctx, NS, Config, config, {

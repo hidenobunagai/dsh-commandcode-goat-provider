@@ -22,7 +22,7 @@ The bundle is configured under the `llm-commandcode-goat` settings namespace:
 | :--- | :--- | :--- | :--- |
 | `apiKeyEnv` | `string` | `COMMANDCODE_API_KEY` | Environment variable name for credential resolution. |
 | `baseURL` | `string` | `https://api.commandcode.ai` | Base URL of the Command Code Provider API. |
-| `defaultContextWindow` | `number` | `262144` (256 KiB) | Fallback context window capacity for unknown models. |
+| `defaultContextWindow` | `number` | `262144` (256K tokens) | Fallback context window capacity for unknown models. |
 | `maxTokens` | `number` | `65536` | Maximum completion tokens cap per request. |
 | `requestTimeoutMs` | `number` | `60000` (60s) | Timeout for establishing initial HTTP/SSE stream response. |
 | `streamIdleTimeoutMs` | `number` | `300000` (5m) | Maximum silence duration between streaming chunks before aborting. |
@@ -31,9 +31,10 @@ The bundle is configured under the `llm-commandcode-goat` settings namespace:
 
 ## Architecture & Integration
 
-- **Host Service**: `src/index.ts` exports a standard Cordis plugin declaring `inject: ['llm']` and registers the `commandcode-goat` adapter, configurable provider metadata, model discovery, and settings listeners.
+- **Host Service**: `src/index.ts` exports a standard Cordis plugin declaring `inject: { llm, attachments }` and registers the `commandcode-goat` adapter, configurable provider metadata, model discovery, and settings listeners.
 - **Browser Client**: `src/client/index.ts` exports a CJS lazy module registered via `dsh.client` that injects the configuration card into the `settings.plugin.item` slot.
-- **Patch Manifest**: `cordis.patch.yml` specifies the single declarative entry row required for DSH deployment profiles.
+- **Patch Manifest**: `cordis.patch.yml` specifies the single declarative entry row required for DSH deployment profiles. This file is read by `dsh bundle` at deploy time — do not rename or remove it.
+- **Model Catalog**: `src/catalog/data.ts` is the single source of truth for all known models; `src/catalog/index.ts` derives pricing, capability, and display maps from it. Add new models there — never in multiple places.
 
 ## Development & Verification
 

@@ -17,10 +17,12 @@ const cssModulePlugin = (): Plugin => ({
       const realPath = id.slice(CSS_VIRTUAL_PREFIX.length, -CSS_VIRTUAL_SUFFIX.length)
       const content = readFileSync(realPath, 'utf8')
       const classMap: Record<string, string> = {}
-      const transformedCss = content.replace(/\.([a-zA-Z0-9_-]+)/g, (_match, className) => {
+      // Only scope class selectors preceded by `.` at rule or selector boundaries,
+      // not dots inside strings / urls / decimal values.
+      const transformedCss = content.replace(/(^|[,{\s])\.([a-zA-Z_][a-zA-Z0-9_-]*)/gm, (_match, prefix, className) => {
         const scopedName = `cmd-${className}`
         classMap[className] = scopedName
-        return `.${scopedName}`
+        return `${prefix}.${scopedName}`
       })
 
       return `

@@ -1,6 +1,6 @@
 {
   "name": "dsh-commandcode-goat-provider",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "main": "lib/index.js",
@@ -11,7 +11,6 @@
       "default": "./lib/index.js"
     },
     "./client": "./lib/client.js",
-    "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
   "files": [
@@ -24,7 +23,8 @@
     "build": "tsdown",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "lint": "oxlint src tests"
+    "lint": "oxlint src tests",
+    "check": "tsc --noEmit && oxlint src tests && vitest run"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^0.1.1-rc.2",

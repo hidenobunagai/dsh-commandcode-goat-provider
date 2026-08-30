@@ -203,7 +203,7 @@ export async function* streamOpenAi(
   for (const c of closeText()) yield c
   for (const c of closeToolCalls()) yield c
 
-  if (totalBlocks === 0) {
+  if (totalBlocks === 0 && !usage) {
     throw new LlmError('Provider returned empty response', EMPTY_RESPONSE_CODE)
   }
 

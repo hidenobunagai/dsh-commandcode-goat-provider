@@ -20,6 +20,7 @@ export type LocaleKey =
   | 'configured'
   | 'unconfigured'
   | 'readonly'
+  | 'validationError'
 
 export const EN_LOCALES: Record<LocaleKey, string> = {
   title: 'Command Code GOAT',
@@ -43,6 +44,7 @@ export const EN_LOCALES: Record<LocaleKey, string> = {
   configured: 'Ready',
   unconfigured: 'Unconfigured',
   readonly: 'Read-only in environment',
+  validationError: 'Please fix validation errors before saving',
 }
 
 export const JA_LOCALES: Record<LocaleKey, string> = {
@@ -67,6 +69,7 @@ export const JA_LOCALES: Record<LocaleKey, string> = {
   configured: '利用可能',
   unconfigured: '未設定',
   readonly: '環境変数による読み取り専用',
+  validationError: '入力エラーを修正してから保存してください',
 }
 
 export function getLocaleText(lang: string = 'en'): (key: LocaleKey) => string {

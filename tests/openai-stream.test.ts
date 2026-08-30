@@ -74,10 +74,9 @@ describe('OpenAI stream translation', () => {
     expect((textDeltas[0] as any).text).toBe('done')
   })
 
-  it('throws EMPTY_RESPONSE on stream with no content', async () => {
+  it('throws EMPTY_RESPONSE on stream with no content and no usage', async () => {
     const rawEvents = [
       { choices: [{ delta: {}, finish_reason: 'stop' }] },
-      { choices: [], usage: { prompt_tokens: 2, completion_tokens: 0 } },
     ]
 
     await expect((async () => {
@@ -85,5 +84,19 @@ describe('OpenAI stream translation', () => {
         // consume
       }
     })()).rejects.toThrow()
+  })
+
+  it('resolves empty content with usage as graceful finish instead of throwing', async () => {
+    const rawEvents = [
+      { choices: [{ delta: {}, finish_reason: 'stop' }] },
+      { choices: [], usage: { prompt_tokens: 2, completion_tokens: 0 } },
+    ]
+
+    const chunks: StreamChunk[] = []
+    for await (const chunk of streamOpenAi(rawEvents, { id: 'gpt-5.6-luna', protocol: 'openai' })) {
+      chunks.push(chunk)
+    }
+    expect(chunks.some((c) => c.type === 'finish')).toBe(true)
+    expect(chunks.some((c) => c.type === 'usage')).toBe(true)
   })
 })

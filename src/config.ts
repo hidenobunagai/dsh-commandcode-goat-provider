@@ -28,7 +28,9 @@ const protocolOverrideSchema: z<ProtocolOverride> = z.object({
 
 export const Config: z<CommandCodeConfig> = z.object({
   apiKeyEnv: z.string().role('credential-ref').default(DEFAULT_API_KEY_ENV),
-  baseURL: z.string().default(DEFAULT_BASE_URL),
+  baseURL: z.string()
+    .default(DEFAULT_BASE_URL)
+    .pattern(/^https?:\/\/.+/),
   defaultContextWindow: z.number().step(1).min(1).default(DEFAULT_CONTEXT_WINDOW),
   maxTokens: z.number().step(1).min(1).default(DEFAULT_MAX_TOKENS),
   requestTimeoutMs: z.number().step(1).min(1).default(DEFAULT_REQUEST_TIMEOUT_MS),

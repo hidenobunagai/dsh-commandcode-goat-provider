@@ -1,5 +1,4 @@
-import type { GenerateOptions, ContentBlock, ToolResultBlock } from '@deepseek-ai/dsh-llm'
-import { LlmError } from '@deepseek-ai/dsh-llm'
+import type { GenerateOptions } from '@deepseek-ai/dsh-llm'
 import type {
   OpenAiChatRequest,
   OpenAiContentPart,
@@ -8,18 +7,7 @@ import type {
   RequestModel,
   ResolveImage,
 } from '../types.ts'
-
-function extractTextContent(blocks: readonly ContentBlock[]): string {
-  let result = ''
-  for (const b of blocks) {
-    if (b.type === 'text') {
-      result += b.text
-    } else if (b.type === 'tool-result') {
-      result += extractTextContent(b.content)
-    }
-  }
-  return result
-}
+import { extractTextContent, findToolResultBlock, resolveImageData } from './shared.ts'
 
 export async function toOpenAiRequest(
   options: GenerateOptions,
@@ -35,7 +23,7 @@ export async function toOpenAiRequest(
 
   for (const message of options.messages) {
     if (message.source.kind === 'tool') {
-      const toolResultBlock = message.content.find((b): b is ToolResultBlock => b.type === 'tool-result')
+      const toolResultBlock = findToolResultBlock(message.content)
       const callId = toolResultBlock?.toolCallId ?? (message.source as { callId?: string }).callId
       const text = toolResultBlock ? extractTextContent(toolResultBlock.content) : extractTextContent(message.content)
 
@@ -55,19 +43,7 @@ export async function toOpenAiRequest(
           }
         } else if (block.type === 'image') {
           hasImage = true
-          if (!supportsImage) {
-            throw new LlmError(
-              `Model ${options.model} does not support image input`,
-              'UNSUPPORTED',
-            )
-          }
-          if (!resolveImage) {
-            throw new LlmError(
-              'Image resolution service is not available',
-              'INVALID_REQUEST',
-            )
-          }
-          const { mediaType, base64 } = await resolveImage(block.attachment, options.signal)
+          const { mediaType, base64 } = await resolveImageData(block, options.model, supportsImage, resolveImage, options.signal)
           parts.push({
             type: 'image_url',
             image_url: { url: `data:${mediaType};base64,${base64}` },

@@ -40,6 +40,7 @@ export function apply(ctx: ClientContext): void {
       t,
       state,
       onEdit: (field, val) => controller.editField(field, val),
+      onEditNumeric: (field, raw) => controller.editNumericField(field, raw),
       onSave: () => void controller.save(),
       onDiscard: () => controller.discard(),
     })
@@ -56,4 +57,6 @@ export function apply(ctx: ClientContext): void {
       )
     })
   }
+
+  ctx.effect(() => () => controller.dispose(), 'dsh-commandcode-goat-provider: dispose card controller')
 }

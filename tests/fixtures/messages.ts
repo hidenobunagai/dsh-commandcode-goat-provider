@@ -4,6 +4,7 @@ import {
   createAssistantMessage as makeAssistantMessage,
   CallId,
 } from '@deepseek-ai/dsh-llm'
+import type { CallId as CallIdType } from '@deepseek-ai/dsh-llm'
 import type { ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 
 export function createUserMessage(text: string) {
@@ -34,6 +35,6 @@ export function createAssistantToolCallMessage(callId: string, name: string, arg
   })
 }
 
-export function createToolResultMessage(callId: CallId, text: string, isError = false) {
+export function createToolResultMessage(callId: CallIdType, text: string, isError = false) {
   return makeToolResult({ callId, content: [{ type: 'text', text }], isError })
 }

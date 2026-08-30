@@ -28,7 +28,7 @@ import {
   resolveCommandCodeModel,
   resolveModelProtocol,
   toModelInfo,
-} from './catalog.ts'
+} from './catalog/index.ts'
 import { CommandCodeApiClient } from './api/client.ts'
 import { toOpenAiRequest } from './conversion/openai.ts'
 import { toAnthropicRequest } from './conversion/anthropic.ts'
@@ -67,17 +67,22 @@ export class CommandCodeAdapter extends LlmAdapter {
 
   override async listModels(provider: string): Promise<readonly LlmModelInfo[]> {
     let catalog = this.options.catalog()
-    if (!catalog || catalog.length === 0) {
+    const isDiscovered = catalog !== undefined && catalog.length > 0
+    if (!isDiscovered) {
       if (this.options.discoverModels) {
         try {
           catalog = await this.options.discoverModels()
         } catch {
-          // fallback
+          // fallback to static
         }
       }
     }
     const all = catalog && catalog.length > 0 ? catalog : FALLBACK_MODELS
-    const filtered = all.filter((m) => LATEST_MODEL_IDS.has(m.id))
+    // When discovery succeeded, expose all discovered models (sorted). Only
+    // filter to LATEST when using static fallback so new remote models are
+    // never hidden behind a stale allow-list.
+    const hasDiscovered = isDiscovered || (catalog !== undefined && catalog.length > 0)
+    const filtered = hasDiscovered ? all : all.filter((m: LlmDiscoveredModel) => LATEST_MODEL_IDS.has(m.id))
     const selected = filtered.length > 0 ? filtered : all
     const sorted = [...selected].sort(compareModels)
     return sorted.map((m) => toModelInfo(provider, m))

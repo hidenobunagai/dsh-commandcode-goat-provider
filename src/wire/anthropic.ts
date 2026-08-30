@@ -163,14 +163,15 @@ export async function* streamAnthropic(
   }
   activeBlocks.clear()
 
-  if (totalBlocks === 0) {
-    throw new LlmError('Provider returned empty response', EMPTY_RESPONSE_CODE)
-  }
-
   const usage: TokenUsage = {
     inputTokens,
     outputTokens,
   }
+
+  if (totalBlocks === 0 && inputTokens === 0 && outputTokens === 0) {
+    throw new LlmError('Provider returned empty response', EMPTY_RESPONSE_CODE)
+  }
+
   yield { type: 'usage', usage }
 
   yield {

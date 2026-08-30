@@ -1,5 +1,4 @@
-import type { GenerateOptions, ContentBlock, ToolResultBlock } from '@deepseek-ai/dsh-llm'
-import { LlmError } from '@deepseek-ai/dsh-llm'
+import type { GenerateOptions } from '@deepseek-ai/dsh-llm'
 import type {
   AnthropicContentBlock,
   AnthropicMessage,
@@ -7,30 +6,7 @@ import type {
   RequestModel,
   ResolveImage,
 } from '../types.ts'
-
-function parseJsonArguments(raw: string): Record<string, unknown> {
-  try {
-    const parsed = JSON.parse(raw)
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      return parsed as Record<string, unknown>
-    }
-    return { value: parsed }
-  } catch {
-    return { raw }
-  }
-}
-
-function extractTextContent(blocks: readonly ContentBlock[]): string {
-  let result = ''
-  for (const b of blocks) {
-    if (b.type === 'text') {
-      result += b.text
-    } else if (b.type === 'tool-result') {
-      result += extractTextContent(b.content)
-    }
-  }
-  return result
-}
+import { extractTextContent, findToolResultBlock, parseJsonArguments, resolveImageData } from './shared.ts'
 
 export async function toAnthropicRequest(
   options: GenerateOptions,
@@ -42,7 +18,7 @@ export async function toAnthropicRequest(
 
   for (const message of options.messages) {
     if (message.source.kind === 'tool') {
-      const toolResultBlock = message.content.find((b): b is ToolResultBlock => b.type === 'tool-result')
+      const toolResultBlock = findToolResultBlock(message.content)
       const callId = toolResultBlock?.toolCallId ?? (message.source as { callId?: string }).callId
       const text = toolResultBlock ? extractTextContent(toolResultBlock.content) : extractTextContent(message.content)
 
@@ -65,19 +41,7 @@ export async function toAnthropicRequest(
             blocks.push({ type: 'text', text: block.text })
           }
         } else if (block.type === 'image') {
-          if (!supportsImage) {
-            throw new LlmError(
-              `Model ${options.model} does not support image input`,
-              'UNSUPPORTED',
-            )
-          }
-          if (!resolveImage) {
-            throw new LlmError(
-              'Image resolution service is not available',
-              'INVALID_REQUEST',
-            )
-          }
-          const { mediaType, base64 } = await resolveImage(block.attachment, options.signal)
+          const { mediaType, base64 } = await resolveImageData(block, options.model, supportsImage, resolveImage, options.signal)
           blocks.push({
             type: 'image',
             source: {

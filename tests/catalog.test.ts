@@ -5,7 +5,7 @@ import {
   normalizeDiscoveredModels,
   resolveCommandCodeModel,
   resolveModelProtocol,
-} from '../src/catalog.ts'
+} from '../src/catalog/index.ts'
 
 describe('catalog', () => {
   it('normalizes discovered models and ignores unknown fields', () => {
@@ -65,7 +65,7 @@ describe('catalog', () => {
 
   it('provides fallback models when discovery fails', () => {
     expect(FALLBACK_MODELS.length).toBeGreaterThan(0)
-    expect(FALLBACK_MODELS.some(m => m.id === 'gpt-5.6-luna')).toBe(true)
-    expect(FALLBACK_MODELS.some(m => m.id === 'claude-sonnet-4-6')).toBe(true)
+    expect(FALLBACK_MODELS.some((m: { id: string }) => m.id === 'gpt-5.6-luna')).toBe(true)
+    expect(FALLBACK_MODELS.some((m: { id: string }) => m.id === 'claude-sonnet-4-6')).toBe(true)
   })
 })

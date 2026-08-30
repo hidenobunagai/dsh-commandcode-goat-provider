@@ -1,3 +1,5 @@
+# This file is consumed by `dsh bundle` to wire the plugin into the DSH
+# deployment profile. See README.md "Patch Manifest" for context.
 - insert:
     - id: llm-commandcode-goat
       name: dsh-commandcode-goat-provider

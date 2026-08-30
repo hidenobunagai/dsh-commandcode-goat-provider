@@ -74,6 +74,10 @@ export async function* parseSse(
     if (signal) {
       signal.removeEventListener('abort', onAbort)
     }
-    reader.releaseLock()
+    try {
+      reader.releaseLock()
+    } catch {
+      // already released via cancel()
+    }
   }
 }

@@ -152,6 +152,29 @@
   background-color: var(--dsw-surface-button-secondary-hover, rgba(255, 255, 255, 0.15));
 }
 
+.errorBanner {
+  padding: 10px 12px;
+  border-radius: var(--dsw-radius-sm, 6px);
+  background-color: var(--dsw-surface-error, rgba(239, 68, 68, 0.12));
+  border: 1px solid var(--dsw-border-error, rgba(239, 68, 68, 0.3));
+  color: var(--dsw-text-error, #f87171);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.fieldError {
+  font-size: 0.75rem;
+  color: var(--dsw-text-error, #f87171);
+}
+
+.inputError {
+  border-color: var(--dsw-border-error, rgba(239, 68, 68, 0.6)) !important;
+}
+
+.inputError:focus {
+  border-color: var(--dsw-border-error, #ef4444) !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .input,
   .button {
