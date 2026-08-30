@@ -6,7 +6,7 @@ import type {
   RequestModel,
   ResolveImage,
 } from '../types.ts'
-import { extractTextContent, findToolResultBlock, parseJsonArguments, resolveImageData } from './shared.ts'
+import { extractTextContent, findToolResultBlock, parseJsonArguments, resolveImageData, sanitizeCallId } from './shared.ts'
 
 export async function toAnthropicRequest(
   options: GenerateOptions,
@@ -27,7 +27,7 @@ export async function toAnthropicRequest(
         blocks: [
           {
             type: 'tool_result',
-            tool_use_id: String(callId),
+            tool_use_id: sanitizeCallId(String(callId)),
             content: text,
             is_error: toolResultBlock?.isError ?? false,
           },
@@ -54,7 +54,7 @@ export async function toAnthropicRequest(
           const text = extractTextContent(block.content)
           blocks.push({
             type: 'tool_result',
-            tool_use_id: String(block.toolCallId),
+            tool_use_id: sanitizeCallId(String(block.toolCallId)),
             content: text,
             is_error: block.isError ?? false,
           })
@@ -73,7 +73,7 @@ export async function toAnthropicRequest(
         } else if (block.type === 'tool-call') {
           blocks.push({
             type: 'tool_use',
-            id: String(block.id),
+            id: sanitizeCallId(String(block.id)),
             name: block.name,
             input: parseJsonArguments(block.arguments),
           })

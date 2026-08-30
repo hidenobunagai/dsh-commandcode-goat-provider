@@ -7,7 +7,7 @@ import type {
   RequestModel,
   ResolveImage,
 } from '../types.ts'
-import { extractTextContent, findToolResultBlock, resolveImageData } from './shared.ts'
+import { extractTextContent, findToolResultBlock, resolveImageData, sanitizeCallId } from './shared.ts'
 
 export async function toOpenAiRequest(
   options: GenerateOptions,
@@ -29,7 +29,7 @@ export async function toOpenAiRequest(
 
       messages.push({
         role: 'tool',
-        tool_call_id: String(callId),
+        tool_call_id: sanitizeCallId(String(callId)),
         content: text,
       })
     } else if (message.source.kind === 'user') {
@@ -52,7 +52,7 @@ export async function toOpenAiRequest(
           const text = extractTextContent(block.content)
           messages.push({
             role: 'tool',
-            tool_call_id: String(block.toolCallId),
+            tool_call_id: sanitizeCallId(String(block.toolCallId)),
             content: text,
           })
         }
@@ -73,7 +73,7 @@ export async function toOpenAiRequest(
       for (const block of message.content) {
         if (block.type === 'tool-call') {
           toolCalls.push({
-            id: String(block.id),
+            id: sanitizeCallId(String(block.id)),
             type: 'function',
             function: {
               name: block.name,
