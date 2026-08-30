@@ -30,8 +30,8 @@ export function apply(ctx: ClientContext): void {
 
   function CommandCodeCardSlot(): React.JSX.Element {
     const state = useSyncExternalStore(
-      (listener) => controller.subscribe(listener),
-      () => controller.getState(),
+      controller.subscribe.bind(controller),
+      controller.getSnapshot,
     )
     const lang = ctx.locale ? ctx.locale.getSnapshot().active : 'en'
     const t = getLocaleText(lang)

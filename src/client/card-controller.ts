@@ -148,14 +148,18 @@ export class CommandCodeCardController {
     }
   }
 
+  /** Stable reference: only returns a new object when state actually changes. */
   getState(): CardState {
-    return { ...this.state }
+    return this.state
   }
 
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)
   }
+
+  /** For useSyncExternalStore — must return value identity when equal. */
+  getSnapshot = (): CardState => this.state
 
   private notify(): void {
     for (const l of this.listeners) l()
