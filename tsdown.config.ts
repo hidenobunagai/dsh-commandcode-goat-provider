@@ -27,6 +27,7 @@ const cssModulePlugin = (): Plugin => ({
 const css = ${JSON.stringify(transformedCss)};
 if (typeof document !== 'undefined' && !document.querySelector('style[data-plugin-css="commandcode-card"]')) {
   const tag = document.createElement('style');
+  tag.dataset.plugin = "dsh-commandcode-goat-provider";
   tag.dataset.pluginCss = "commandcode-card";
   tag.textContent = css;
   document.head.appendChild(tag);
@@ -56,7 +57,7 @@ export default defineConfig([
       ],
     },
   },
-  // 2. Browser client side (DSH module loader CJS format)
+  // 2. Browser client side (DSH module loader CJS closure-factory format)
   {
     entry: { client: 'src/client/index.ts' },
     format: ['cjs'],
@@ -75,11 +76,11 @@ export default defineConfig([
         'react/jsx-runtime',
       ],
     },
-    banner: {
-      js: 'window.__ModuleLoader__ && window.__ModuleLoader__.load({ id: "dsh-commandcode-goat-provider/client", factory: function(require, module, exports) {',
-    },
-    footer: {
-      js: '\n}})',
+    outputOptions: {
+      entryFileNames: 'client.js',
+      banner: 'window.__ModuleLoader__.load({ id: "dsh-commandcode-goat-provider", factory: (require) => {',
+      intro: 'var module = { exports: {} }; var exports = module.exports;',
+      footer: 'return module.exports; } });',
     },
   },
 ])
