@@ -41,7 +41,7 @@ describe('Composition and Bundle Verification', () => {
     const resolved = await ctx.llm.resolveModelInfo('commandcode-goat', 'gpt-5.6-luna')
     expect(resolved.provider).toBe('commandcode-goat')
     expect(resolved.id).toBe('gpt-5.6-luna')
-    expect(resolved.context?.contextWindow).toBe(262144)
+    expect(resolved.context?.contextWindow).toBe(1050000)
 
     const configurable = ctx.llm.listConfigurableProviders()
     expect(configurable.some((c) => c.provider === 'commandcode-goat')).toBe(true)

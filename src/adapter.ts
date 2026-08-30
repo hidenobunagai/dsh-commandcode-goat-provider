@@ -41,6 +41,7 @@ export interface CommandCodeAdapterOptions {
   connection: () => ResolvedConnection | Promise<ResolvedConnection>
   catalog: () => readonly LlmDiscoveredModel[] | undefined
   config: () => CommandCodeConfig
+  discoverModels?: () => Promise<readonly LlmDiscoveredModel[]>
   resolveImage?: ResolveImage
   fetchImpl?: typeof fetch
 }
@@ -63,7 +64,16 @@ export class CommandCodeAdapter extends LlmAdapter {
   }
 
   override async listModels(provider: string): Promise<readonly LlmModelInfo[]> {
-    const catalog = this.options.catalog()
+    let catalog = this.options.catalog()
+    if (!catalog || catalog.length === 0) {
+      if (this.options.discoverModels) {
+        try {
+          catalog = await this.options.discoverModels()
+        } catch {
+          // fallback
+        }
+      }
+    }
     const models = catalog && catalog.length > 0 ? catalog : FALLBACK_MODELS
     return models.map((m) => toModelInfo(provider, m))
   }

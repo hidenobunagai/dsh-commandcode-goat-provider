@@ -89,10 +89,33 @@ export function apply(ctx: Context, config: CommandCodeConfig): void {
     }
   }
 
+  const fetchDynamicCatalog = async (signal?: AbortSignal): Promise<readonly LlmDiscoveredModel[]> => {
+    const activeConfig = getCurrentConfig()
+    let apiKey: string | undefined
+    try {
+      apiKey = await resolveApiKey()
+    } catch {
+      // discovery allows keyless interrogation or fallback
+    }
+
+    const client = new CommandCodeApiClient()
+    const models = await client.listModels({
+      baseURL: activeConfig.baseURL,
+      apiKey,
+      signal,
+    })
+
+    if (models.length > 0) {
+      discoveredCatalog = models
+    }
+    return models
+  }
+
   const adapter = new CommandCodeAdapter({
     connection: resolveConnection,
     catalog: () => discoveredCatalog,
     config: getCurrentConfig,
+    discoverModels: fetchDynamicCatalog,
     resolveImage,
   })
 
@@ -134,9 +157,16 @@ export function apply(ctx: Context, config: CommandCodeConfig): void {
       signal: req.signal,
     })
 
-    discoveredCatalog = models
+    if (models.length > 0) {
+      discoveredCatalog = models
+    }
     return models
   })
+
+  // Warm up dynamic model discovery in background
+  ctx.effect(() => {
+    void fetchDynamicCatalog().catch(() => {})
+  }, 'dsh-commandcode-goat-provider: model discovery warmup')
 
   installSettingsSection(ctx, NS, Config, config, {
     setSource: (source) => {
