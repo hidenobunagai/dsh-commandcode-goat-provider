@@ -53,7 +53,7 @@ export function apply(ctx: Context, config: CommandCodeConfig): void {
       try {
         const hit = await credentials.resolve(ref)
         if (hit !== undefined && hit.value.length > 0) {
-          return assertUsableApiKey(hit.value, NS_STRING, ref)
+          return assertUsableApiKey(hit.value, NS, ref)
         }
       } catch {
         // credential backend unavailable — try ambient next
@@ -63,13 +63,13 @@ export function apply(ctx: Context, config: CommandCodeConfig): void {
     try {
       const ambient = launchEnvironmentOf(ctx).get(ref)
       if (ambient !== undefined && ambient.value.length > 0) {
-        return assertUsableApiKey(ambient.value, NS_STRING, ref)
+        return assertUsableApiKey(ambient.value, NS, ref)
       }
     } catch {}
 
     const directEnv = process.env[envName] ?? process.env.COMMANDCODE_API_KEY
     if (directEnv && directEnv.trim().length > 0) {
-      return assertUsableApiKey(directEnv.trim(), NS_STRING, ref)
+      return assertUsableApiKey(directEnv.trim(), NS, ref)
     }
 
     throw new LlmError(
