@@ -1,0 +1,160 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border-radius: var(--dsw-radius-md, 8px);
+  background-color: var(--dsw-surface-card, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--dsw-border-subtle, rgba(255, 255, 255, 0.08));
+  color: var(--dsw-text-primary, #ffffff);
+  box-sizing: border-box;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.titleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--dsw-text-primary, #ffffff);
+}
+
+.description {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--dsw-text-secondary, #9ca3af);
+  line-height: 1.4;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badgeSuccess {
+  background-color: var(--dsw-badge-success-bg, rgba(16, 185, 129, 0.15));
+  color: var(--dsw-badge-success-text, #34d399);
+}
+
+.badgeNeutral {
+  background-color: var(--dsw-badge-neutral-bg, rgba(156, 163, 175, 0.15));
+  color: var(--dsw-badge-neutral-text, #9ca3af);
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--dsw-text-primary, #ffffff);
+}
+
+.hint {
+  font-size: 0.75rem;
+  color: var(--dsw-text-muted, #6b7280);
+}
+
+.input {
+  padding: 8px 12px;
+  border-radius: var(--dsw-radius-sm, 6px);
+  border: 1px solid var(--dsw-border-default, rgba(255, 255, 255, 0.12));
+  background-color: var(--dsw-surface-input, rgba(0, 0, 0, 0.2));
+  color: var(--dsw-text-primary, #ffffff);
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.input:focus {
+  border-color: var(--dsw-focus-ring, #3b82f6);
+}
+
+.input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--dsw-accent, #3b82f6);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.button {
+  padding: 8px 16px;
+  border-radius: var(--dsw-radius-sm, 6px);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.buttonPrimary {
+  background-color: var(--dsw-accent, #3b82f6);
+  color: #ffffff;
+}
+
+.buttonPrimary:hover:not(:disabled) {
+  background-color: var(--dsw-accent-hover, #2563eb);
+}
+
+.buttonPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.buttonSecondary {
+  background-color: var(--dsw-surface-button-secondary, rgba(255, 255, 255, 0.08));
+  color: var(--dsw-text-primary, #ffffff);
+}
+
+.buttonSecondary:hover:not(:disabled) {
+  background-color: var(--dsw-surface-button-secondary-hover, rgba(255, 255, 255, 0.15));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .input,
+  .button {
+    transition: none;
+  }
+}
