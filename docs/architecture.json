@@ -1,0 +1,338 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Command Code GOAT DSH Provider Architecture",
+    "locale": "en",
+    "output": "index.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/hidenobunagai/dsh-commandcode-goat-provider",
+      "revision": "af924c318ff1e83d790ce0ab31624fb4ca8987d1"
+    },
+    "viewBox": [1180, 620],
+    "views": [
+      {
+        "id": "prompt-stream",
+        "label": "Prompt to Stream",
+        "focus": ["host_plugin", "adapter", "converter", "api_client", "remote_api", "ai_models", "wire_stream"],
+        "note": "End-to-end request lifecycle from DSH Cordis host to upstream LLMs and back as StreamChunk deltas."
+      },
+      {
+        "id": "model-catalog",
+        "label": "Model Discovery & Capabilities",
+        "focus": ["client_ui", "host_plugin", "adapter", "catalog", "remote_api"],
+        "note": "Dynamic discovery from /provider/v1/models merged with static fallbacks and pricing hints."
+      },
+      {
+        "id": "credential-security",
+        "label": "Security & Credentials",
+        "focus": ["client_ui", "cred_resolver", "host_plugin", "api_client"],
+        "note": "Write-only staging in UI and multi-tier credential resolution with Zero Data Retention (ZDR)."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "client_ui",
+      "type": "frontend",
+      "label": "Web Settings Card",
+      "sublabel": "React 19 / Plugin UI",
+      "tag": "Settings Slot",
+      "brand": "react",
+      "sources": [
+        {
+          "path": "src/client/CommandCodeCard.tsx",
+          "line": 68,
+          "end_line": 230,
+          "label": "CommandCodeCard"
+        }
+      ],
+      "pos": [40, 130],
+      "size": [140, 60]
+    },
+    {
+      "id": "host_plugin",
+      "type": "backend",
+      "label": "Cordis Host Plugin",
+      "sublabel": "llm-commandcode-goat",
+      "tag": "Lifecycle & DI",
+      "brand": "deepseek",
+      "sources": [
+        {
+          "path": "src/index.ts",
+          "line": 34,
+          "end_line": 204,
+          "label": "apply"
+        }
+      ],
+      "pos": [40, 290],
+      "size": [140, 60]
+    },
+    {
+      "id": "cred_resolver",
+      "type": "security",
+      "label": "Credential Resolver",
+      "sublabel": "Managed & Ambient Env",
+      "tag": "Zero Plaintext Leak",
+      "sources": [
+        {
+          "path": "src/index.ts",
+          "line": 40,
+          "end_line": 80,
+          "label": "resolveApiKey"
+        }
+      ],
+      "pos": [40, 450],
+      "size": [140, 60]
+    },
+    {
+      "id": "catalog",
+      "type": "database",
+      "label": "Model Catalog",
+      "sublabel": "Dynamic & Static Specs",
+      "tag": "Pricing & Registry",
+      "sources": [
+        {
+          "path": "src/catalog/index.ts",
+          "line": 1,
+          "end_line": 150,
+          "label": "resolveCommandCodeModel"
+        }
+      ],
+      "pos": [280, 130],
+      "size": [140, 60]
+    },
+    {
+      "id": "adapter",
+      "type": "backend",
+      "label": "CommandCode Adapter",
+      "sublabel": "LlmAdapter Contract",
+      "tag": "Dispatch & Watchdog",
+      "sources": [
+        {
+          "path": "src/adapter.ts",
+          "line": 51,
+          "end_line": 209,
+          "label": "CommandCodeAdapter"
+        }
+      ],
+      "pos": [280, 290],
+      "size": [140, 60]
+    },
+    {
+      "id": "converter",
+      "type": "backend",
+      "label": "Protocol Converter",
+      "sublabel": "OpenAI & Anthropic Wire",
+      "tag": "Multimodal & Tools",
+      "sources": [
+        {
+          "path": "src/conversion/openai.ts",
+          "line": 1,
+          "end_line": 120,
+          "label": "toOpenAiRequest"
+        }
+      ],
+      "pos": [520, 130],
+      "size": [140, 60]
+    },
+    {
+      "id": "wire_stream",
+      "type": "backend",
+      "label": "Stream Translator",
+      "sublabel": "SSE Parser & Chunks",
+      "tag": "Idle Watchdog",
+      "sources": [
+        {
+          "path": "src/wire/openai.ts",
+          "line": 1,
+          "end_line": 150,
+          "label": "streamOpenAi"
+        }
+      ],
+      "pos": [520, 450],
+      "size": [140, 60]
+    },
+    {
+      "id": "api_client",
+      "type": "cloud",
+      "label": "HTTP Transport",
+      "sublabel": "Streaming Fetch & ZDR",
+      "tag": "Abort & Timeouts",
+      "sources": [
+        {
+          "path": "src/api/client.ts",
+          "line": 27,
+          "end_line": 139,
+          "label": "CommandCodeApiClient"
+        }
+      ],
+      "pos": [520, 290],
+      "size": [140, 60]
+    },
+    {
+      "id": "remote_api",
+      "type": "external",
+      "label": "Command Code API",
+      "sublabel": "api.commandcode.ai",
+      "tag": "Provider Gateway",
+      "sources": [
+        {
+          "path": "src/config.ts",
+          "line": 1,
+          "end_line": 58,
+          "label": "Config"
+        }
+      ],
+      "pos": [760, 290],
+      "size": [140, 60]
+    },
+    {
+      "id": "ai_models",
+      "type": "external",
+      "label": "Frontier Models",
+      "sublabel": "GPT-5 / Claude 4 / O-series",
+      "tag": "Inference Compute",
+      "brand": "openai",
+      "pos": [1000, 290],
+      "size": [140, 60]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "DSH Host Runtime",
+      "wraps": ["client_ui", "host_plugin", "cred_resolver"],
+      "pad": 15
+    },
+    {
+      "kind": "security-group",
+      "label": "Provider Bundle (Cordis)",
+      "wraps": ["catalog", "adapter", "converter", "wire_stream", "api_client"],
+      "pad": 15
+    },
+    {
+      "kind": "region",
+      "label": "Command Code Gateway & Models",
+      "wraps": ["remote_api", "ai_models"],
+      "pad": 15
+    }
+  ],
+  "connections": [
+    {
+      "id": "client-to-host",
+      "from": "client_ui",
+      "to": "host_plugin",
+      "label": "config sync",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "cred-to-host",
+      "from": "cred_resolver",
+      "to": "host_plugin",
+      "label": "resolve key",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "host-to-adapter",
+      "from": "host_plugin",
+      "to": "adapter",
+      "label": "registers",
+      "variant": "emphasis"
+    },
+    {
+      "id": "adapter-to-catalog",
+      "from": "adapter",
+      "to": "catalog",
+      "label": "capabilities",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "adapter-to-converter",
+      "from": "adapter",
+      "to": "converter",
+      "label": "wire payload"
+    },
+    {
+      "id": "converter-to-client",
+      "from": "converter",
+      "to": "api_client",
+      "label": "POST body",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "client-to-wire",
+      "from": "api_client",
+      "to": "wire_stream",
+      "label": "SSE stream",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "wire-to-adapter",
+      "from": "wire_stream",
+      "to": "adapter",
+      "label": "StreamChunk",
+      "variant": "emphasis"
+    },
+    {
+      "id": "client-to-remote",
+      "from": "api_client",
+      "to": "remote_api",
+      "label": "HTTPS streaming",
+      "variant": "emphasis"
+    },
+    {
+      "id": "remote-to-models",
+      "from": "remote_api",
+      "to": "ai_models",
+      "label": "inference",
+      "variant": "emphasis"
+    },
+    {
+      "id": "remote-to-catalog",
+      "from": "remote_api",
+      "to": "catalog",
+      "label": "GET /models",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "top",
+      "via": [[830, 50], [350, 50]]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Host & UI Integration",
+      "items": [
+        "Cordis plugin declaratively injects LLM and Settings services",
+        "React 19 configuration card staged under Settings → Plugins → Configurable"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Protocol & Stream Engine",
+      "items": [
+        "Dual wire translation for OpenAI ChatCompletions and Anthropic Messages",
+        "SSE stream parsing to DSH StreamChunk deltas guarded by idle watchdog timer"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Catalog & Security",
+      "items": [
+        "Hybrid catalog combining dynamic /models discovery with static capability maps",
+        "Zero-leak credential resolution with Zero Data Retention (ZDR) transport headers"
+      ]
+    }
+  ]
+}
