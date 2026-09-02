@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ToolCallId } from '@deepseek-ai/dsh-llm'
+import type { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { toAnthropicRequest } from '../src/conversion/anthropic.ts'
 import {
   createUserMessage,
@@ -58,7 +58,7 @@ describe('Anthropic conversion', () => {
         messages: [
           createUserMessage('Run the tool'),
           createAssistantToolCallMessage('call-1', 'calc', '{"n":42}'),
-          createToolResultMessage(ToolCallId('call-1'), '42 result'),
+          createToolResultMessage('call-1' as ToolCallId, '42 result'),
         ],
       },
       {
