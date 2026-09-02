@@ -67,14 +67,14 @@ export async function* streamAnthropic(
         if (text) {
           const state = activeBlocks.get(index)
           if (state) state.text = (state.text || '') + text
-          yield { type: 'text-delta', text }
+          yield { type: 'text-delta', index, text }
         }
       } else if (deltaType === 'thinking_delta') {
         const reasoning = (delta?.thinking as string) || ''
         if (reasoning) {
           const state = activeBlocks.get(index)
           if (state) state.text = (state.text || '') + reasoning
-          yield { type: 'reasoning-delta', text: reasoning }
+          yield { type: 'reasoning-delta', index, text: reasoning }
         }
       } else if (deltaType === 'input_json_delta') {
         const partialJson = (delta?.partial_json as string) || ''

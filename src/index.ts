@@ -171,7 +171,7 @@ export function apply(ctx: Context, config: CommandCodeConfig): void {
     const baseURL = req.baseURL ?? activeConfig.baseURL
     // Prefer the carrier-provided signal (Remote path), fall back to the
     // legacy request-embedded one for backward compat with older hosts.
-    const effectiveSignal = signal ?? req.signal
+    const effectiveSignal = signal ?? (req as any).signal
     const client = new CommandCodeApiClient()
     const models = await client.listModels({
       baseURL,

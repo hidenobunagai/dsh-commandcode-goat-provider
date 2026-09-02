@@ -10,7 +10,8 @@ export const DEFAULT_REQUEST_TIMEOUT_MS = 60000
 export const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 300000
 export const DEFAULT_ENABLE_ZDR = false
 
-export const defaultConfig: Required<Omit<CommandCodeConfig, 'retryPolicy' | 'hiddenModels'>> & { retryPolicy?: undefined; hiddenModels: string[] } = {
+export const defaultConfig: Required<Omit<CommandCodeConfig, 'apiKey' | 'retryPolicy' | 'hiddenModels'>> & { apiKey?: string; retryPolicy?: undefined; hiddenModels: string[] } = {
+  apiKey: undefined,
   apiKeyEnv: DEFAULT_API_KEY_ENV,
   baseURL: DEFAULT_BASE_URL,
   defaultContextWindow: DEFAULT_CONTEXT_WINDOW,
@@ -28,6 +29,7 @@ const protocolOverrideSchema: z<ProtocolOverride> = z.object({
 })
 
 export const Config: z<CommandCodeConfig> = z.object({
+  apiKey: z.string().role('secret'),
   apiKeyEnv: z.string().role('credential-ref').default(DEFAULT_API_KEY_ENV),
   baseURL: z.string()
     .default(DEFAULT_BASE_URL)
@@ -42,8 +44,9 @@ export const Config: z<CommandCodeConfig> = z.object({
   hiddenModels: z.array(z.string()).default([]),
 })
 
-export function resolveConfig(config?: Partial<CommandCodeConfig>): Required<Omit<CommandCodeConfig, 'retryPolicy'>> & { retryPolicy?: CommandCodeConfig['retryPolicy']; hiddenModels: string[] } {
+export function resolveConfig(config?: Partial<CommandCodeConfig>): Required<Omit<CommandCodeConfig, 'apiKey' | 'retryPolicy'>> & { apiKey?: string; retryPolicy?: CommandCodeConfig['retryPolicy']; hiddenModels: string[] } {
   return {
+    apiKey: config?.apiKey,
     apiKeyEnv: config?.apiKeyEnv ?? defaultConfig.apiKeyEnv,
     baseURL: config?.baseURL ?? defaultConfig.baseURL,
     defaultContextWindow: config?.defaultContextWindow ?? defaultConfig.defaultContextWindow,

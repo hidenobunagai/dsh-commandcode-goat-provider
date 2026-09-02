@@ -1,8 +1,7 @@
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
-import type {} from '@deepseek-ai/dsh-client-ui-slots'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type {} from '@deepseek-ai/dsh-client-runtime/client'
 import React, { useSyncExternalStore } from 'react'
 import { CommandCodeCard } from './CommandCodeCard.tsx'
 import { CommandCodeCardController } from './card-controller.ts'
@@ -19,13 +18,13 @@ export const inject = ['slots', 'locale', 'connection', 'settingsScope']
 
 const NS = 'llm-commandcode-goat'
 
-export function apply(ctx: ClientContext): void {
+export function apply(ctx: any): void {
   const connection = ctx.get('connection') as ConnectionHandle | undefined
-  const api = connection?.api
+  const api = (connection as any)?.api ?? ctx.remote?.credentials
 
   const controller = new CommandCodeCardController(
     ctx.settingsScope.bind({ namespace: NS }),
-    api?.credentials,
+    api ?? ctx.remote?.credentials,
   )
 
   function CommandCodeCardSlot(): React.JSX.Element {
@@ -33,7 +32,7 @@ export function apply(ctx: ClientContext): void {
       controller.subscribe.bind(controller),
       controller.getSnapshot,
     )
-    const lang = ctx.locale ? ctx.locale.getSnapshot().active : 'en'
+    const lang = ctx.locale?.getSnapshot ? ctx.locale.getSnapshot().active : 'en'
     const t = getLocaleText(lang)
 
     return React.createElement(CommandCodeCard, {

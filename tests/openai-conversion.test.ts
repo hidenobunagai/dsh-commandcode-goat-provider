@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CallId, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
+import { ReasoningEffortId, ToolCallId } from '@deepseek-ai/dsh-llm'
 import { toOpenAiRequest } from '../src/conversion/openai.ts'
 import {
   createUserMessage,
@@ -19,7 +19,7 @@ describe('OpenAI conversion', () => {
         messages: [
           createUserMessage('Use the tool.'),
           createAssistantToolCallMessage('call-1', 'read', '{"path":"file.txt"}'),
-          createToolResultMessage(CallId('call-1'), 'file content'),
+          createToolResultMessage(ToolCallId('call-1'), 'file content'),
         ],
         tools: [{ name: 'read', description: 'Read a file.', parameters: { type: 'object' } }],
         maxTokens: 1024,

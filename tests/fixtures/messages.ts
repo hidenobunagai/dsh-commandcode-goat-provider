@@ -2,9 +2,9 @@ import {
   createToolResultMessage as makeToolResult,
   createUserMessage as makeUserMessage,
   createAssistantMessage as makeAssistantMessage,
-  CallId,
+  ToolCallId,
 } from '@deepseek-ai/dsh-llm'
-import type { CallId as CallIdType } from '@deepseek-ai/dsh-llm'
+import type { ToolCallId as CallIdType } from '@deepseek-ai/dsh-llm'
 import type { ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 
 export function createUserMessage(text: string) {
@@ -31,7 +31,7 @@ export function createAssistantTextMessage(text: string) {
 export function createAssistantToolCallMessage(callId: string, name: string, args: string) {
   return makeAssistantMessage({
     source: { provider: 'commandcode-goat', model: 'gpt-5.6-luna' },
-    content: [{ type: 'tool-call', id: CallId(callId), name, arguments: args }],
+    content: [{ type: 'tool-call', id: ToolCallId(callId), name, arguments: args }],
   })
 }
 

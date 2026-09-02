@@ -14,6 +14,7 @@ export interface ProtocolOverride {
 }
 
 export interface CommandCodeConfig {
+  apiKey?: string
   apiKeyEnv?: string
   baseURL?: string
   defaultContextWindow?: number
