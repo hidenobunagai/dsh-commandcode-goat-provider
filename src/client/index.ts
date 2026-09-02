@@ -14,17 +14,24 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 }
 
 export const name = 'llm-commandcode-goat'
-export const inject = ['slots', 'locale', 'connection', 'settingsScope']
+export const inject = [
+  'slots',
+  'locale',
+  'connection',
+  'settingsScope',
+  'remote',
+  'remote.credentials',
+]
 
 const NS = 'llm-commandcode-goat'
 
 export function apply(ctx: any): void {
   const connection = ctx.get('connection') as ConnectionHandle | undefined
-  const api = (connection as any)?.api ?? ctx.remote?.credentials
+  const credentialsApi = ctx.remote?.credentials ?? (connection as any)?.api?.credentials
 
   const controller = new CommandCodeCardController(
     ctx.settingsScope.bind({ namespace: NS }),
-    api ?? ctx.remote?.credentials,
+    credentialsApi,
   )
 
   function CommandCodeCardSlot(): React.JSX.Element {
