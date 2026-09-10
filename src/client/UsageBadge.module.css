@@ -307,6 +307,27 @@
   }
 }
 
+/* Narrow headers drop the countdown column before anything else gives way. */
+@media (max-width: 900px) {
+  .rowReset {
+    display: none;
+  }
+}
+
+/* Phone-width header: the badge can sit far enough left that the 264px panel
+   would clip the viewport. The panel stays anchored to the badge's right edge
+   and its width is capped to the remaining viewport, so the panel always fits
+   on screen even though it then extends right of the badge itself. */
+@media (max-width: 720px) {
+  .trigger {
+    gap: 8px;
+  }
+
+  .panel {
+    width: min(264px, calc(100vw - 24px));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .trigger {
     transition: none;
