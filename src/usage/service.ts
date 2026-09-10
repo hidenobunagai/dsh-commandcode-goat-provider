@@ -164,18 +164,32 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
     live.lastFetchAt = now
   }
 
-  const currentRoute = (agent: Agent): { provider: string; model: string } => {
+  const currentRoute = (agent: Agent): { provider: string; model: string; reasoningEffort?: string } => {
     // The session's assembled selection is the source of truth for routing.
     const anyAgent = agent as unknown as {
-      session?: { requestHeader?: () => { config?: { provider?: string; model?: string } } | undefined }
+      session?: {
+        requestHeader?: () =>
+          | { config?: { provider?: string; model?: string; reasoningEffort?: string } }
+          | undefined
+      }
     }
     const header = anyAgent.session?.requestHeader?.()?.config
-    if (header?.provider && header?.model) return { provider: header.provider, model: header.model }
+    if (header?.provider && header?.model) {
+      return {
+        provider: header.provider,
+        model: header.model,
+        ...(header.reasoningEffort === undefined ? {} : { reasoningEffort: header.reasoningEffort }),
+      }
+    }
     const defaults = (ctx as unknown as { get?: (k: string) => unknown }).get?.('agentDefaultModel') as
-      | { currentSelection?: () => { provider: string; model: string } }
+      | { currentSelection?: () => { provider: string; model: string; reasoningEffort?: string } }
       | undefined
     const fallback = defaults?.currentSelection?.() ?? { provider: '', model: '' }
-    return { provider: fallback.provider, model: fallback.model }
+    return {
+      provider: fallback.provider,
+      model: fallback.model,
+      ...(fallback.reasoningEffort === undefined ? {} : { reasoningEffort: fallback.reasoningEffort }),
+    }
   }
 
   const notice = (text: string) =>
@@ -206,7 +220,7 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
           messages: [
             ...decision.messages,
             notice(
-              `usage ${fmtPct(outcome.usagePct)} ≥ ${threshold}% だが代替側も ${fmtPct(outcome.altPct)}% のため切替せず継続`,
+              `usage ${fmtPct(outcome.usagePct)} ≥ ${threshold}% だが代替側も ${fmtPct(outcome.altPct)} のため切替せず継続`,
             ),
           ],
         }
@@ -214,27 +228,40 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
       const target = FAILOVER_ROUTES[outcome.to]
       live.switching = true
       try {
-        // Session-local switch (same path as the /model picker): both the
-        // current session AND the saved default move to the failover target.
-        const agents = (ctx as unknown as { get?: (k: string) => unknown }).get?.('agents') as
-          | { selectForNextRequest?: (agent: unknown, s: unknown) => void }
+        // Session-local switch through the same path the /model picker uses:
+        // `selectModel` resolves the route, moves this Session's next request,
+        // and persists the saved default on its own.
+        const sessions = (ctx as unknown as { get?: (k: string) => unknown }).get?.('sessionController') as
+          | { selectModel?: (request: unknown) => Promise<unknown> }
           | undefined
-        agents?.selectForNextRequest?.(agent, { provider: target.provider, model: target.model })
-        const defaults = (ctx as unknown as { get?: (k: string) => unknown }).get?.('agentDefaultModel') as
-          | { saveSelection?: (s: unknown) => Promise<void> }
-          | undefined
-        await defaults?.saveSelection?.({ provider: target.provider, model: target.model })
+        const sessionId = (agent as unknown as { session?: { id?: string } }).session?.id
+        if (typeof sessions?.selectModel !== 'function' || sessionId === undefined) {
+          throw new Error(
+            `sessionController.selectModel is unavailable (service ${sessions === undefined ? 'absent' : 'present'}, session ${String(sessionId)})`,
+          )
+        }
+        await sessions.selectModel({
+          sessionId,
+          provider: target.provider,
+          model: target.model,
+          ...(route.reasoningEffort === undefined ? {} : { reasoningEffort: route.reasoningEffort }),
+        })
         live.lastSwitch = { from: active as FailoverSide, to: outcome.to, usagePct: outcome.usagePct, at: Date.now() }
         return {
           ...decision,
           messages: [
             ...decision.messages,
             notice(
-              `usage ${fmtPct(outcome.usagePct)} ≥ ${threshold}% のため ${target.provider}/${target.model} に自動切替（代替側 ${fmtPct(outcome.altPct)}%）`,
+              `usage ${fmtPct(outcome.usagePct)} ≥ ${threshold}% のため ${target.provider}/${target.model} に自動切替（代替側 ${fmtPct(outcome.altPct)}）`,
             ),
           ],
         }
-      } catch {
+      } catch (error) {
+        // A refused switch must reach the operator: silently staying put looks
+        // identical to "quota is fine" and hides a broken auto-switch.
+        ctx.logger.warn(
+          `usage-failover: automatic switch to ${target.provider}/${target.model} failed; staying on the current route: ${String(error)}`,
+        )
         return decision
       } finally {
         live.switching = false
