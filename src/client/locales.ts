@@ -43,6 +43,12 @@ export type LocaleKey =
   | 'usageWindowWeek'
   | 'usageWindowMonth'
   | 'usageAuto'
+  | 'usageAutoOn'
+  | 'usageAutoTurnOn'
+  | 'usageAutoTurnOff'
+  | 'usageAutoSaving'
+  | 'usageAutoFailed'
+  | 'usageAutoUnknown'
   | 'usageManual'
   | 'usageAutoOff'
   | 'usageAutoNever'
@@ -94,6 +100,12 @@ export const EN_LOCALES: Record<LocaleKey, string> = {
   usageWindowWeek: 'week',
   usageWindowMonth: 'month',
   usageAuto: 'Auto-switch',
+  usageAutoOn: 'Auto-switch on',
+  usageAutoTurnOn: 'Turn automatic switching on',
+  usageAutoTurnOff: 'Turn automatic switching off',
+  usageAutoSaving: 'Saving…',
+  usageAutoFailed: 'Could not save the setting',
+  usageAutoUnknown: 'Unavailable in this deployment',
   usageManual: 'Manual',
   usageAutoOff: 'Auto-switch off',
   usageAutoNever: 'No switch has fired yet',
@@ -146,6 +158,12 @@ export const JA_LOCALES: Record<LocaleKey, string> = {
   usageWindowWeek: '週',
   usageWindowMonth: '月',
   usageAuto: '自動切替',
+  usageAutoOn: '自動切替オン',
+  usageAutoTurnOn: '自動切替をオンにする',
+  usageAutoTurnOff: '自動切替をオフにする',
+  usageAutoSaving: '保存中…',
+  usageAutoFailed: '設定を保存できませんでした',
+  usageAutoUnknown: 'この構成では利用できません',
   usageManual: '手動',
   usageAutoOff: '自動切替オフ',
   usageAutoNever: 'まだ切り替わっていません',

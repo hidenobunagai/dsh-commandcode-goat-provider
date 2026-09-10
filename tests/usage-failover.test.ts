@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { decideFailover, sideOf, FAILOVER_ROUTES, type FailoverSide } from '../src/usage/failover.ts'
 import { maxPercent, type UsageSnapshot } from '../src/usage/fetch.ts'
+import { UsageFailoverConfigSchema } from '../src/usage/service.ts'
 
 const snap = (f: number, w: number, m: number): UsageSnapshot => ({
   fiveHour: { used: f, cap: 100, percent: f },
@@ -37,5 +38,22 @@ describe('usage failover decision', () => {
   })
   it('takes the max window percent', () => {
     expect(maxPercent(snap(10, 79, 30))).toBe(79)
+  })
+})
+
+describe('usage-failover settings section', () => {
+  // The header chip and the set_failover tool both write `enabled` here, and a
+  // section holding only that key must resolve the automation defaults rather
+  // than turning the guard off.
+  it('defaults the automation on when only `enabled` is configured', () => {
+    const resolved = UsageFailoverConfigSchema({ enabled: true })
+    expect(resolved).toMatchObject({ enabled: true, threshold: 80, refreshIntervalMs: 60000 })
+  })
+  it('carries an explicit opt-out through', () => {
+    expect(UsageFailoverConfigSchema({ enabled: false })).toMatchObject({ enabled: false })
+  })
+  it('refuses a threshold outside 1-100', () => {
+    expect(() => UsageFailoverConfigSchema({ threshold: 0 })).toThrow()
+    expect(() => UsageFailoverConfigSchema({ threshold: 101 })).toThrow()
   })
 })

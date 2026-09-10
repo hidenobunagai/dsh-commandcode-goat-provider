@@ -64,6 +64,8 @@
   line-height: 1;
 }
 
+/* The in-header variant is a plain indicator, never the control: it sits
+   inside the trigger button, where a nested button is invalid. */
 .chipMuted {
   padding: 0 5px;
   border-radius: 999px;
@@ -140,24 +142,63 @@
   color: var(--dsw-alias-label-primary);
 }
 
-.chipOk,
-.chipWarn {
-  margin-left: auto;
-  padding: 0 6px;
-  border-radius: 999px;
-  corner-shape: round;
+/* Header chip inherits the panel's type scale. */
+.chipHeader {
   font-size: 10px;
-  line-height: 16px;
 }
 
-.chipOk {
+.chip,
+.chipWarn,
+.chipError {
+  margin-left: auto;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 999px;
+  corner-shape: round;
+  font: inherit;
+  font-size: 10px;
+  line-height: 18px;
+  cursor: pointer;
+  transition: background 0.16s, color 0.16s;
+}
+
+/* Enabled state: the base chip is already the "on" look. */
+.chip {
   background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--dsw-alias-label-secondary);
 }
 
 .chipWarn {
   background: var(--dsw-alias-bg-multi-select);
-  color: var(--dsw-alias-label-secondary);
+  color: var(--dsw-alias-label-primary);
+}
+
+.chipError {
+  background: var(--dsw-alias-interactive-bg-hover-danger);
+  color: var(--dsw-alias-label-primary);
+}
+
+.chip:hover:not(:disabled),
+.chipError:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover-solid);
+}
+
+.chipWarn:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover-accent);
+}
+
+.chip:focus-visible,
+.chipWarn:focus-visible,
+.chipError:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 1px;
+}
+
+.chip:disabled,
+.chipWarn:disabled,
+.chipError:disabled {
+  cursor: default;
+  opacity: 0.7;
 }
 
 .group {

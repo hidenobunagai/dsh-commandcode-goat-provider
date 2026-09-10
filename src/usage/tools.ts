@@ -72,10 +72,18 @@ export function registerUsageTools(ctx: Context): void {
       },
       render: (_args, value) => textBlock(`failover ${value.enabled ? 'enabled' : 'disabled'}`),
     },
-    execute(args, _exec) {
-      // The switch itself lives in the usage-failover settings section; the
-      // host applies it there. The tool echoes intent so the call is visible.
-      return Promise.resolve({ enabled: args.enabled === true })
+    async execute(args, _exec) {
+      // Persist into the usage-failover settings section, so the switch survives
+      // the session and matches what the header badge reports.
+      const settings = (ctx as unknown as { get?: (k: string) => unknown }).get?.('settings') as
+        | { update?: (ns: string, patch: object) => Promise<void> }
+        | undefined
+      const enabled = args.enabled === true
+      if (typeof settings?.update !== 'function') {
+        throw new Error('the settings service is unavailable in this host, so the failover switch cannot be stored')
+      }
+      await settings.update('usage-failover', { enabled })
+      return { enabled }
     },
   }))
 }
