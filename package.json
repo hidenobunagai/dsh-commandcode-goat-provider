@@ -1,6 +1,6 @@
 {
   "name": "dsh-commandcode-goat-provider",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "private": false,
   "type": "module",
   "main": "lib/index.js",
