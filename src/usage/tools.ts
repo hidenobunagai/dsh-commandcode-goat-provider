@@ -7,7 +7,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-session-projection'
-import type { UsageFailoverView } from './service.ts'
+import type { UsageFailoverView } from './view.ts'
 
 /** Tool names owned by the usage-failover unit. */
 export const USAGE_TOOLS = ['get_usage', 'set_failover'] as const

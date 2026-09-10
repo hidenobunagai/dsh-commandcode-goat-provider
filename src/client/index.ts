@@ -5,6 +5,7 @@ import type {} from '@deepseek-ai/dsh-client-runtime/client'
 import React, { useSyncExternalStore } from 'react'
 import { CommandCodeCard } from './CommandCodeCard.tsx'
 import { CommandCodeCardController } from './card-controller.ts'
+import { UsageBadge } from './UsageBadge.tsx'
 import { getLocaleText } from './locales.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -61,6 +62,17 @@ export function apply(ctx: any): void {
           key: NS,
         },
         CommandCodeCardSlot,
+      )
+    })
+    // Session-header usage badge (Go/GOAT quota, failover state).
+    ctx.slots.inject('conversation.session.header.actions', function* () {
+      yield ctx.slots.register(
+        {
+          name: 'conversation.session.header.actions',
+          id: 'usage-badge',
+          order: 5,
+        },
+        UsageBadge,
       )
     })
   }

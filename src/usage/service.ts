@@ -14,6 +14,7 @@ import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-session-projection/types'
 import { fetchGoUsage, fetchGoatUsage, type UsageSnapshot } from './fetch.ts'
+import type { UsageFailoverView as SharedView } from './view.ts'
 import { decideFailover, FAILOVER_ROUTES, sideOf, type FailoverSide } from './failover.ts'
 
 /** Cordis plugin name used by loader diagnostics. */
@@ -23,14 +24,7 @@ export const usageServiceName = 'usage-failover'
 export const usageServiceInject = ['agents', 'sessionProjections', 'agentDefaultModel']
 
 /** Client-visible projection value: quota for both sides plus failover state. */
-export interface UsageFailoverView {
-  go: UsageSnapshot | null
-  goat: UsageSnapshot | null
-  /** Failover automation master switch (persisted in settings). */
-  enabled: boolean
-  /** Last automatic switch, when one happened this session. */
-  lastSwitch?: { from: FailoverSide; to: FailoverSide; usagePct: number; at: number }
-}
+export type UsageFailoverView = SharedView
 
 const windowSliceSchema = zod.object({
   used: zod.number(),
