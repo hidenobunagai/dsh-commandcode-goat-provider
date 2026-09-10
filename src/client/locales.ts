@@ -36,6 +36,20 @@ export type LocaleKey =
   | 'modelVisibility'
   | 'hideModel'
   | 'showModel'
+  // usage badge
+  | 'usageGo'
+  | 'usageGoat'
+  | 'usageWindow5h'
+  | 'usageWindowWeek'
+  | 'usageWindowMonth'
+  | 'usageAuto'
+  | 'usageManual'
+  | 'usageAutoOff'
+  | 'usageAutoNever'
+  | 'usageAutoLast'
+  | 'usageResets'
+  | 'usageHot'
+  | 'usageQuota'
 
 export const EN_LOCALES: Record<LocaleKey, string> = {
   title: 'Command Code GOAT',
@@ -74,6 +88,19 @@ export const EN_LOCALES: Record<LocaleKey, string> = {
   modelVisibility: 'Model visibility',
   hideModel: 'Hide',
   showModel: 'Show',
+  usageGo: 'Go',
+  usageGoat: 'GOAT',
+  usageWindow5h: '5h',
+  usageWindowWeek: 'week',
+  usageWindowMonth: 'month',
+  usageAuto: 'Auto-switch',
+  usageManual: 'Manual',
+  usageAutoOff: 'Auto-switch off',
+  usageAutoNever: 'No switch has fired yet',
+  usageAutoLast: 'Last switch',
+  usageResets: 'resets',
+  usageHot: 'at or over threshold',
+  usageQuota: 'Provider quota',
 }
 
 export const JA_LOCALES: Record<LocaleKey, string> = {
@@ -113,6 +140,19 @@ export const JA_LOCALES: Record<LocaleKey, string> = {
   modelVisibility: 'モデルの表示',
   hideModel: '非表示',
   showModel: '表示',
+  usageGo: 'Go',
+  usageGoat: 'GOAT',
+  usageWindow5h: '5h',
+  usageWindowWeek: '週',
+  usageWindowMonth: '月',
+  usageAuto: '自動切替',
+  usageManual: '手動',
+  usageAutoOff: '自動切替オフ',
+  usageAutoNever: 'まだ切り替わっていません',
+  usageAutoLast: '前回の切替',
+  usageResets: 'リセット',
+  usageHot: 'しきい値以上',
+  usageQuota: 'プロバイダー残量',
 }
 
 export function getLocaleText(lang: string = 'en'): (key: LocaleKey) => string {
