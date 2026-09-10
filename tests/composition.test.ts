@@ -22,6 +22,17 @@ describe('Composition and Bundle Verification', () => {
   it('boots inside a Cordis context with LlmRuntime and registers commandcode-goat adapter', async () => {
     const ctx = new Context()
 
+    // Stubs for the usage-failover unit's host services (absent in this boot harness).
+    ctx.provide('agents', {})
+    ctx.provide('sessionProjections', {
+      register: () => {},
+      stateOf: () => undefined,
+    })
+    ctx.provide('agentDefaultModel', {
+      currentSelection: () => ({ provider: 'commandcode-goat', model: 'deepseek/deepseek-v4.1-flash' }),
+      saveSelection: async () => {},
+    })
+
     await ctx.plugin(LlmRuntime)
     await ctx.plugin(plugin, {
       apiKeyEnv: 'COMMANDCODE_API_KEY',
