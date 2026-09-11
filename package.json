@@ -57,8 +57,11 @@
     "react-dom": "^19.0.0",
     "tsdown": "^0.22.2",
     "typescript": "^5.8.2",
-    "vitest": "^3.0.7",
+    "vitest": "^4.1.11",
     "yaml": "^2.9.0"
+  },
+  "overrides": {
+    "js-yaml": "^4.3.2"
   },
   "dsh": {
     "bundle": {
