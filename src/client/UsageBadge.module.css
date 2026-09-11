@@ -1,0 +1,376 @@
+/* Session-header quota badge. A compact Go/GOAT meter pair whose click-open
+   panel follows the composer ContextMeter surface (menu r12, prominent
+   elevation, 4px bars) so the two header readouts read as one family.
+   Tokens only — no color literals, so light/dark and themes follow the host. */
+
+.root {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* One 28px row family with the composer's attach and meter buttons.
+   Label color is `secondary`, not `tertiary`: these figures are functional text
+   at 12px and `tertiary` lands at 3.7:1 on the header surface. */
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 28px;
+  padding: 2px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.16s, color 0.16s;
+}
+
+.trigger:hover,
+.trigger:focus-visible {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 1px;
+}
+
+.side {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sideLabel {
+  color: var(--dsw-alias-label-secondary);
+  letter-spacing: 0.01em;
+}
+
+.sideValue {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsw-alias-label-primary);
+}
+
+.warn {
+  color: var(--dsw-alias-label-error);
+  font-size: 11px;
+  line-height: 1;
+}
+
+/* The in-header variant is a plain indicator, never the control: it sits
+   inside the trigger button, where a nested button is invalid. */
+.chipMuted {
+  padding: 0 5px;
+  border-radius: 999px;
+  corner-shape: round;
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+  line-height: 16px;
+}
+
+/* ── gauges ─────────────────────────────────────────────────────────────── */
+
+.gauge {
+  flex: none;
+  overflow: visible;
+}
+
+.gaugeTrack {
+  fill: none;
+  stroke: var(--dsw-alias-border-l3);
+  stroke-width: 2;
+}
+
+.gaugeFill {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  /* Start the arc at 12 o'clock. */
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+.toneUsed {
+  stroke: var(--dsw-alias-label-tertiary);
+}
+
+.toneHot {
+  stroke: var(--dsw-alias-label-error);
+}
+
+.toneNone {
+  stroke: var(--dsw-alias-border-l2);
+}
+
+/* ── panel ──────────────────────────────────────────────────────────────── */
+
+.panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 100;
+  box-sizing: border-box;
+  width: 264px;
+  padding: 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--dsw-specific-menu);
+  --dsw-elevation-stroke-color: var(--dsw-alias-border-l1);
+  box-shadow: var(--dsw-elevation-prominent);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 20px;
+  cursor: default;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panelTitle {
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary);
+}
+
+/* Header chip inherits the panel's type scale. */
+.chipHeader {
+  font-size: 10px;
+}
+
+.chip,
+.chipWarn,
+.chipError {
+  margin-left: auto;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 999px;
+  corner-shape: round;
+  font: inherit;
+  font-size: 10px;
+  line-height: 18px;
+  cursor: pointer;
+  transition: background 0.16s, color 0.16s;
+}
+
+/* Enabled state: the base chip is already the "on" look. */
+.chip {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-secondary);
+}
+
+.chipWarn {
+  background: var(--dsw-alias-bg-multi-select);
+  color: var(--dsw-alias-label-primary);
+}
+
+.chipError {
+  background: var(--dsw-alias-interactive-bg-hover-danger);
+  color: var(--dsw-alias-label-primary);
+}
+
+.chip:hover:not(:disabled),
+.chipError:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover-solid);
+}
+
+.chipWarn:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover-accent);
+}
+
+.chip:focus-visible,
+.chipWarn:focus-visible,
+.chipError:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 1px;
+}
+
+.chip:disabled,
+.chipWarn:disabled,
+.chipError:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.group {
+  margin-top: 12px;
+}
+
+.groupTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.groupLabel {
+  color: var(--dsw-alias-label-primary);
+}
+
+.groupValue {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsw-alias-label-primary);
+}
+
+.groupWarn {
+  color: var(--dsw-alias-label-error);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.rows {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 1px 0;
+}
+
+.rowLabel {
+  flex: none;
+  min-width: 26px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.rowTrack {
+  flex: 1;
+  height: 3px;
+  border-radius: 999px;
+  corner-shape: round;
+  background: var(--dsw-alias-interactive-bg-hover);
+  overflow: hidden;
+}
+
+.rowFill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  corner-shape: round;
+}
+
+.rowFill.toneUsed {
+  background: var(--dsw-alias-label-tertiary);
+}
+
+.rowFill.toneHot {
+  background: var(--dsw-alias-label-error);
+}
+
+.rowValue {
+  flex: none;
+  min-width: 30px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.rowReset {
+  flex: none;
+  min-width: 46px;
+  text-align: right;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── footer ─────────────────────────────────────────────────────────────── */
+
+.panelFoot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--dsw-alias-border-subtle);
+  color: var(--dsw-alias-label-secondary);
+}
+
+/* Muted status dot: decoration only, so the row's text carries the meaning. */
+.footDot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  corner-shape: round;
+  background: var(--dsw-alias-label-tertiary);
+  opacity: 0.6;
+}
+
+.footLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.footArrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.arrowMark {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.footValue {
+  color: var(--dsw-alias-label-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Narrow headers drop the countdown column before anything else gives way. */
+@media (max-width: 900px) {
+  .rowReset {
+    display: none;
+  }
+}
+
+/* Narrow headers drop the countdown column before anything else gives way. */
+@media (max-width: 900px) {
+  .rowReset {
+    display: none;
+  }
+}
+
+/* Phone-width header: the badge can sit far enough left that the 264px panel
+   would clip the viewport. The panel stays anchored to the badge's right edge
+   and its width is capped to the remaining viewport, so the panel always fits
+   on screen even though it then extends right of the badge itself. */
+@media (max-width: 720px) {
+  .trigger {
+    gap: 8px;
+  }
+
+  .panel {
+    width: min(264px, calc(100vw - 24px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trigger {
+    transition: none;
+  }
+}

@@ -15,6 +15,8 @@ import type {
 } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-settings'
 import { Config, DEFAULT_API_KEY_ENV, resolveConfig } from './config.ts'
+import { applyUsageService } from './usage/service.ts'
+import { registerUsageTools } from './usage/tools.ts'
 
 const deepEqualJson = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b)
 import type { CommandCodeConfig, ResolvedConnection, ResolveImage } from './types.ts'
@@ -26,7 +28,7 @@ import {
 import { CommandCodeApiClient } from './api/client.ts'
 
 export const name = 'llm-commandcode-goat'
-export const inject = ['llm']
+export const inject = ['llm', 'agents', 'sessionProjections', 'agentDefaultModel']
 export { Config }
 
 const NS = 'llm-commandcode-goat'
@@ -201,4 +203,9 @@ export function apply(ctx: Context, config: CommandCodeConfig): void {
       onChange: ensureRegistrationFacts,
     })
   })
+
+  // Usage-failover unit: quota projection + pre-step auto-switch + tools.
+  // Mounted unconditionally; the unit no-ops when neither pair key resolves.
+  applyUsageService(ctx, {})
+  registerUsageTools(ctx)
 }

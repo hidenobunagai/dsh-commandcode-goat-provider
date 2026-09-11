@@ -4,6 +4,18 @@ import { defineConfig, type Plugin } from 'tsdown'
 const CSS_VIRTUAL_PREFIX = '\0dsh-css:'
 const CSS_VIRTUAL_SUFFIX = '.mjs'
 
+/**
+ * Stable per-stylesheet identity for the injected `<style>` tag. Two CSS
+ * modules sharing one id would make the second injection see the first tag and
+ * skip itself, silently dropping that module's styles.
+ * @param realPath - absolute path of the CSS module.
+ * @returns a kebab-case id derived from the file name.
+ */
+const cssIdOf = (realPath: string): string => {
+  const base = realPath.split('/').pop() ?? 'module'
+  return base.replace(/\.module\.css$/i, '').replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()
+}
+
 const cssModulePlugin = (): Plugin => ({
   name: 'inline-css-module',
   resolveId(source, importer) {
@@ -16,6 +28,7 @@ const cssModulePlugin = (): Plugin => ({
     if (id.startsWith(CSS_VIRTUAL_PREFIX) && id.endsWith(CSS_VIRTUAL_SUFFIX)) {
       const realPath = id.slice(CSS_VIRTUAL_PREFIX.length, -CSS_VIRTUAL_SUFFIX.length)
       const content = readFileSync(realPath, 'utf8')
+      const cssId = cssIdOf(realPath)
       const classMap: Record<string, string> = {}
       // Only scope class selectors preceded by `.` at rule or selector boundaries,
       // not dots inside strings / urls / decimal values.
@@ -27,10 +40,10 @@ const cssModulePlugin = (): Plugin => ({
 
       return `
 const css = ${JSON.stringify(transformedCss)};
-if (typeof document !== 'undefined' && !document.querySelector('style[data-plugin-css="commandcode-card"]')) {
+if (typeof document !== 'undefined' && !document.querySelector('style[data-plugin-css="${cssId}"]')) {
   const tag = document.createElement('style');
   tag.dataset.plugin = "dsh-commandcode-goat-provider";
-  tag.dataset.pluginCss = "commandcode-card";
+  tag.dataset.pluginCss = "${cssId}";
   tag.textContent = css;
   document.head.appendChild(tag);
 }
