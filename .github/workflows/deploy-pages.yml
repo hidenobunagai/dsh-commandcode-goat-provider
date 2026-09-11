@@ -1,5 +1,9 @@
 name: Deploy GitHub Pages
 
+# Publishes the interactive architecture diagram only. docs/ also carries internal
+# notes (model-sync.md, superpowers/); docs/index.html is fully self-contained (every
+# image is an inlined data: URI), so the artifact is staged with just the diagram
+# files and the markdown never reaches the public site.
 on:
   push:
     branches:
@@ -26,13 +30,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      - name: Stage the public artifact
+        run: |
+          mkdir -p "$RUNNER_TEMP/pages"
+          rsync -a --exclude='*.md' --exclude='superpowers/' docs/ "$RUNNER_TEMP/pages/"
+          find "$RUNNER_TEMP/pages" -type f | sort
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './docs'
+          path: ${{ runner.temp }}/pages
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

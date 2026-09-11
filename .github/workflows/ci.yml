@@ -1,0 +1,32 @@
+name: CI
+
+# The catalog this package ships is rewritten automatically (homepi
+# daily-model-watch / docs/model-sync.md), so every push must prove the plugin
+# still tests and builds before the local DSH profile consumes it.
+#
+# `bun run typecheck` is deliberately absent: this checkout carries five
+# pre-existing ToolCallId errors in the vendored @deepseek-ai/dsh-llm types,
+# so a type gate would be red for reasons unrelated to the change.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.8
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Supply chain scan (OSV)
+        uses: google/osv-scanner-action/osv-scanner-action@v2.5.0
+        with:
+          scan-args: |-
+            --lockfile bun.lock
+      - run: bun run lint
+      - run: bun run test
+      - run: bun run build
