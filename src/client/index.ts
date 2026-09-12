@@ -47,7 +47,6 @@ const BADGE_TEXT_KEYS: Record<keyof UsageBadgeText, LocaleKey> = {
   autoOff: 'usageAutoOff',
   autoNever: 'usageAutoNever',
   autoLast: 'usageAutoLast',
-  resets: 'usageResets',
   hot: 'usageHot',
   quota: 'usageQuota',
 }

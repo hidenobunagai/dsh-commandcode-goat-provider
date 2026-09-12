@@ -26,7 +26,6 @@ export interface UsageBadgeText {
   autoOff: string
   autoNever: string
   autoLast: string
-  resets: string
   hot: string
   quota: string
 }
@@ -49,7 +48,6 @@ const FALLBACK: UsageBadgeText = {
   autoOff: 'Auto-switch off',
   autoNever: 'No switch has fired yet',
   autoLast: 'Last switch',
-  resets: 'resets',
   hot: 'at or over threshold',
   quota: 'Provider quota',
 }
@@ -157,10 +155,10 @@ function Gauge({ percent, tone }: { percent: number; tone: Tone }): React.JSX.El
 
 /**
  * One window row in the detail panel: label, micro bar, percent, countdown.
- * @param props - the reading plus its tone and localized reset caption.
+ * @param props - the reading to render.
  * @returns the row markup.
  */
-function WindowRow({ reading, t }: { reading: WindowReading; t: UsageBadgeText }): React.JSX.Element {
+function WindowRow({ reading }: { reading: WindowReading }): React.JSX.Element {
   const percent = Math.round(reading.window.percent)
   const remaining = countdown(reading.window.resetAt)
   return (
@@ -304,7 +302,6 @@ export function UsageBadge({ useProjection, useSession, t = FALLBACK, failoverSc
   const summary = model.sides
     .map((side) => `${side.label} ${Math.round(side.worst)}%`)
     .join('  ')
-  const warn = model.hot ? ` ⚠` : ''
 
   return (
     <span className={css.root} ref={rootRef}>
@@ -346,7 +343,7 @@ export function UsageBadge({ useProjection, useSession, t = FALLBACK, failoverSc
               </h4>
               <ul className={css.rows}>
                 {side.readings.map((reading) => (
-                  <WindowRow key={reading.id} reading={reading} t={t} />
+                  <WindowRow key={reading.id} reading={reading} />
                 ))}
               </ul>
             </section>
