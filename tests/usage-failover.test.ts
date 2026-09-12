@@ -110,6 +110,13 @@ function boot(opts: {
   defaultSelection?: { provider: string; model: string }
   /** Set false to model a host whose only key source is the launch environment. */
   credentials?: boolean
+  /**
+   * Model the managed store's asynchronous file load: while this returns false,
+   * `resolve` answers undefined, exactly as it does before the file is read.
+   */
+  credentialsLoaded?: () => boolean
+  /** Cache window; non-zero exercises the warmup/refresh gate. */
+  refreshIntervalMs?: number
   launchEnv?: Record<string, string>
 }): Harness {
   const calls = stubUsageEndpoints(opts.goPercent, opts.goatPercent)
@@ -126,7 +133,7 @@ function boot(opts: {
   ctx.provide('credentials', {
     // Keyless env: the managed store is the only source, as under systemd.
     resolve: async (ref: string) =>
-      opts.credentials === false ? undefined
+      opts.credentials === false || opts.credentialsLoaded?.() === false ? undefined
         : ref === 'OPENCODE_GO_API_KEY' ? { value: 'go-key' }
           : ref === 'COMMANDCODE_API_KEY' ? { value: 'goat-key' }
             : undefined,
@@ -146,7 +153,7 @@ function boot(opts: {
       },
     })
   }
-  applyUsageService(ctx, { enabled: true, threshold: 80, refreshIntervalMs: 0 })
+  applyUsageService(ctx, { enabled: true, threshold: 80, refreshIntervalMs: opts.refreshIntervalMs ?? 0 })
   if (opts.sessionController !== true) {
     // Model the headless runner (`@deepseek-ai/dsh-headless`): it installs a
     // selection ref it never exposes, so every request is rewritten from that
@@ -247,6 +254,33 @@ describe('usage-failover switch sink', () => {
     expect(h.saved).toHaveLength(0)
     expect(await h.request(GO)).toMatchObject({ provider: GO.provider, model: GO.model })
     expect(noticeTexts(decision)).toContain('切替せず継続')
+  })
+
+  // The warmup runs at load time, before `credentials-local` has read its file.
+  // Caching that empty result for `refreshIntervalMs` left the pair at
+  // `no-usage` for the whole window, so a headless run shorter than the window
+  // never evaluated a switch at all.
+  it('retries on the next pre-step when the warmup ran before the store loaded', async () => {
+    delete process.env.OPENCODE_GO_API_KEY
+    let loaded = false
+    const h = boot({
+      goPercent: 90,
+      goatPercent: 5,
+      refreshIntervalMs: 60000,
+      credentialsLoaded: () => loaded,
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(h.calls).toHaveLength(0)
+
+    loaded = true
+    const decision = await h.preStep()
+
+    expect(h.calls).toContainEqual({
+      url: 'https://opencode.ai/zen/go/v1/usage',
+      authorization: 'Bearer go-key',
+    })
+    expect(h.saved).toEqual([{ provider: GOAT.provider, model: GOAT.model }])
+    expect(noticeTexts(decision)).toContain(`${GOAT.provider}/${GOAT.model} に自動切替`)
   })
 
   // The adapter authenticates through `launchEnvironmentOf(ctx)`, so a host that

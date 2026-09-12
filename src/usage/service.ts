@@ -178,7 +178,12 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
     ])
     if (go) live.go = go
     if (goat) live.goat = goat
-    live.lastFetchAt = now
+    // Nothing fetched means nothing to cache. The warmup below runs at load time,
+    // before `credentials-local` has finished reading its file, so `lastFetchAt`
+    // must stay "never" and let the next pre-step resolve again — otherwise the
+    // pair reads as `no-usage` for a whole `refreshIntervalMs`, and a headless run
+    // shorter than that interval never even evaluates a switch.
+    live.lastFetchAt = go || goat ? now : 0
   }
 
   const currentRoute = (agent: Agent): { provider: string; model: string; reasoningEffort?: string } => {
