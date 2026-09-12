@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import type { Agent } from '@deepseek-ai/dsh-agent'
+import { installModelSelection, type Agent } from '@deepseek-ai/dsh-agent'
 import { createLaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment'
+import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import { decideFailover, sideOf, FAILOVER_ROUTES, type FailoverSide } from '../src/usage/failover.ts'
 import { maxPercent, type UsageSnapshot } from '../src/usage/fetch.ts'
 import { applyUsageService, UsageFailoverConfigSchema } from '../src/usage/service.ts'
@@ -84,12 +85,21 @@ function stubUsageEndpoints(goPercent: number, goatPercent: number) {
   return calls
 }
 
+/** One route as the loop sees it entering the `agent/request` waterfall. */
+interface RequestRoute {
+  provider: string
+  model: string
+  reasoningEffort?: ReasoningEffortId
+  temperature?: number
+}
+
 interface Harness {
   ctx: Context
   saved: { provider: string; model: string }[]
   selected: Record<string, unknown>[]
   calls: { url: string; authorization: string | undefined }[]
   preStep: (route?: { provider: string; model: string }) => Promise<{ messages: unknown[] }>
+  request: (route?: RequestRoute) => Promise<RequestRoute>
 }
 
 /** Boot the real service against stubbed host services and a usage endpoint. */
@@ -137,18 +147,33 @@ function boot(opts: {
     })
   }
   applyUsageService(ctx, { enabled: true, threshold: 80, refreshIntervalMs: 0 })
+  if (opts.sessionController !== true) {
+    // Model the headless runner (`@deepseek-ai/dsh-headless`): it installs a
+    // selection ref it never exposes, so every request is rewritten from that
+    // private start snapshot. Registered after the plugin, so this listener is
+    // inner to the failover override, exactly as in the composed headless profile.
+    installModelSelection(ctx, { current: { ...selection }, assembled: { ...selection } })
+  }
 
+  let header: { provider: string; model: string } = GO
+  const agent = {
+    session: { id: 'session-under-test', requestHeader: () => ({ config: header }) },
+  } as unknown as Agent
   const preStep = async (route: { provider: string; model: string } = GO) => {
-    const agent = {
-      session: { id: 'session-under-test', requestHeader: () => ({ config: route }) },
-    } as unknown as Agent
+    header = route
     return ctx.waterfall(
       'agent/pre-step',
       { agent, turn: 1, step: 1, messages: [], signal: new AbortController().signal },
       () => Promise.resolve({ kind: 'enter' as const, messages: [] }),
     ) as Promise<{ messages: unknown[] }>
   }
-  return { ctx, saved, selected, calls, preStep }
+  const request = (route: RequestRoute = GO) =>
+    ctx.waterfall(
+      'agent/request',
+      { agent, turn: 1, step: 1, signal: new AbortController().signal },
+      () => Promise.resolve(route),
+    ) as Promise<RequestRoute>
+  return { ctx, saved, selected, calls, preStep, request }
 }
 const noticeTexts = (decision: { messages: unknown[] }): string =>
   decision.messages
@@ -163,7 +188,7 @@ describe('usage-failover switch sink', () => {
     else process.env.OPENCODE_GO_API_KEY = env
   })
 
-  it('resolves the Go key without env and saves the default on a headless host', async () => {
+  it('resolves the Go key without env and moves the running agent on a headless host', async () => {
     delete process.env.OPENCODE_GO_API_KEY
     const h = boot({ goPercent: 90, goatPercent: 5 })
     const decision = await h.preStep()
@@ -173,11 +198,23 @@ describe('usage-failover switch sink', () => {
       url: 'https://opencode.ai/zen/go/v1/usage',
       authorization: 'Bearer go-key',
     })
-    // ② No session-controller: the switch lands on the saved default.
+    // ② No session-controller: the switch is saved for the next Agent *and*
+    //    queued for this run, whose next request the private headless ref
+    //    would otherwise rewrite back onto the hot side.
     expect(h.selected).toHaveLength(0)
     expect(h.saved).toEqual([{ provider: GOAT.provider, model: GOAT.model }])
+    expect(await h.request(GO)).toMatchObject({ provider: GOAT.provider, model: GOAT.model })
     expect(noticeTexts(decision)).toContain(`${GOAT.provider}/${GOAT.model} に自動切替`)
-    expect(noticeTexts(decision)).toContain('次回のエージェントから適用')
+  })
+
+  it('clears the inherited effort and keeps sampling scalars on the queued route', async () => {
+    delete process.env.OPENCODE_GO_API_KEY
+    const h = boot({ goPercent: 90, goatPercent: 5 })
+    await h.preStep()
+
+    const routed = await h.request({ ...GO, reasoningEffort: ReasoningEffortId('high'), temperature: 0.2 })
+    expect(routed).toMatchObject({ provider: GOAT.provider, model: GOAT.model, temperature: 0.2 })
+    expect(routed.reasoningEffort).toBeUndefined()
   })
 
   it('does not re-notice or re-save once the default already holds the target', async () => {
@@ -187,6 +224,8 @@ describe('usage-failover switch sink', () => {
     const second = await h.preStep()
     expect(h.saved).toHaveLength(1)
     expect(noticeTexts(second)).toBe('')
+    // A repeated pre-step (stale header) re-queues the same route idempotently.
+    expect(await h.request(GO)).toMatchObject({ provider: GOAT.provider, model: GOAT.model })
   })
 
   it('moves the session through sessionController when a web host provides it', async () => {
@@ -196,8 +235,9 @@ describe('usage-failover switch sink', () => {
 
     expect(h.selected).toEqual([{ sessionId: 'session-under-test', provider: GOAT.provider, model: GOAT.model }])
     expect(h.saved).toHaveLength(0)
+    // The web switch is session-local; the plugin must not also force requests.
+    expect(await h.request(GO)).toMatchObject({ provider: GO.provider, model: GO.model })
     expect(noticeTexts(decision)).toContain(`${GOAT.provider}/${GOAT.model} に自動切替`)
-    expect(noticeTexts(decision)).not.toContain('次回のエージェントから適用')
   })
 
   it('stays put when both sides are hot', async () => {
@@ -205,6 +245,7 @@ describe('usage-failover switch sink', () => {
     const h = boot({ goPercent: 90, goatPercent: 90 })
     const decision = await h.preStep()
     expect(h.saved).toHaveLength(0)
+    expect(await h.request(GO)).toMatchObject({ provider: GO.provider, model: GO.model })
     expect(noticeTexts(decision)).toContain('切替せず継続')
   })
 

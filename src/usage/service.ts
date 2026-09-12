@@ -11,7 +11,7 @@ import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-session-projection'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
+import { createUserMessage, type ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-session-projection/types'
 import { fetchGoUsage, fetchGoatUsage, type UsageSnapshot } from './fetch.ts'
@@ -89,6 +89,13 @@ interface Live {
   lastFetchAt: number
   lastSwitch: UsageFailoverView['lastSwitch']
   switching: boolean
+}
+
+/** Route a running Agent's next request must take when no live selection ref is reachable. */
+interface InflightRoute {
+  provider: string
+  model: string
+  reasoningEffort?: ReasoningEffortId
 }
 
 const fmtPct = (v: number): string => `${Math.round(v)}%`
@@ -208,23 +215,28 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
       source: { kind: 'plugin' as const, plugin: usageServiceName },
     })
 
+  /** Route each running Agent's next request must take while its live ref is out of reach. */
+  const inflight = new WeakMap<Agent, InflightRoute>()
+
   /**
-   * Apply one pair switch. A web host moves this Session through
-   * `sessionController.selectModel`; a headless host has no session-controller
-   * (it waits for web-only services), so the switch lands on the saved default
-   * that the next Agent is created from. `already-default` reports a default
-   * that is already the target, which is how a headless repeat is recognized:
-   * this run keeps its route, so the next step sees the same side again.
+   * Queue one pair switch for a running Agent. A web host moves this Session
+   * through `sessionController.selectModel`; a headless host has no
+   * session-controller (it waits for web-only services) and keeps the runner's
+   * `ModelSelectionRef` private, so the switch is saved as the default for the
+   * next Agent *and* queued for this Agent's next request: the route leaves the
+   * hot side inside the current run instead of only on the next one.
+   * `already-default` reports a default that is already the target, which is how
+   * a repeat is recognized — the notice stops, the queued route stays.
    */
   const switchRoute = async (
     agent: Agent,
     target: { provider: string; model: string },
     reasoningEffort: string | undefined,
-  ): Promise<'session' | 'default' | 'already-default'> => {
-    const selection = {
+  ): Promise<'session' | 'inflight' | 'already-default'> => {
+    const selection: InflightRoute = {
       provider: target.provider,
       model: target.model,
-      ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
+      ...(reasoningEffort === undefined ? {} : { reasoningEffort: reasoningEffort as ReasoningEffortId }),
     }
     const sessions = (ctx as unknown as { get?: (k: string) => unknown }).get?.('sessionController') as
       | { selectModel?: (request: unknown) => Promise<unknown> }
@@ -246,10 +258,39 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
       )
     }
     const current = defaults.currentSelection?.()
-    if (current?.provider === target.provider && current.model === target.model) return 'already-default'
-    await defaults.saveSelection(selection)
-    return 'default'
+    const already = current?.provider === target.provider && current.model === target.model
+    if (!already) await defaults.saveSelection(selection)
+    inflight.set(agent, selection)
+    return already ? 'already-default' : 'inflight'
   }
+
+  /**
+   * Apply the queued route at the request waterfall the runner's own
+   * `installModelSelection` listener rides, so a headless switch is the final
+   * word on the next request instead of being rewritten back by that private,
+   * never-updated ref. Keyed by the Agent, so concurrent runs never share one.
+   */
+  ctx.on(
+    'agent/request',
+    async ({ agent }, next) => {
+      const resolved = await next()
+      const target = inflight.get(agent)
+      if (target === undefined) return resolved
+      if (resolved.provider === target.provider && resolved.model === target.model) {
+        // The logged request header now carries the queued route; stop forcing it.
+        inflight.delete(agent)
+        return resolved
+      }
+      const { reasoningEffort: _inherited, ...rest } = resolved
+      return {
+        ...rest,
+        provider: target.provider,
+        model: target.model,
+        ...(target.reasoningEffort === undefined ? {} : { reasoningEffort: target.reasoningEffort }),
+      }
+    },
+    { prepend: true },
+  )
 
   ctx.on(
     'agent/pre-step',
@@ -282,8 +323,8 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
       live.switching = true
       try {
         // Web: session-local switch through the same path the /model picker
-        // uses. Headless: the saved default, so the next Agent starts on the
-        // target route (this run keeps the route it was created with).
+        // uses. Headless: the saved default plus a queued override, so this run
+        // leaves the hot route at its next request and the next Agent starts there.
         const applied = await switchRoute(agent, target, route.reasoningEffort)
         if (applied === 'already-default') return decision
         live.lastSwitch = { from: active as FailoverSide, to: outcome.to, usagePct: outcome.usagePct, at: Date.now() }
@@ -292,8 +333,7 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
           messages: [
             ...decision.messages,
             notice(
-              `usage ${fmtPct(outcome.usagePct)} ≥ ${threshold}% のため ${target.provider}/${target.model} に自動切替` +
-              `${applied === 'session' ? '' : '（次回のエージェントから適用）'}（代替側 ${fmtPct(outcome.altPct)}）`,
+              `usage ${fmtPct(outcome.usagePct)} ≥ ${threshold}% のため ${target.provider}/${target.model} に自動切替（代替側 ${fmtPct(outcome.altPct)}）`,
             ),
           ],
         }
