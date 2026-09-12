@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
+import { createLaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment'
 import { decideFailover, sideOf, FAILOVER_ROUTES, type FailoverSide } from '../src/usage/failover.ts'
 import { maxPercent, type UsageSnapshot } from '../src/usage/fetch.ts'
 import { applyUsageService, UsageFailoverConfigSchema } from '../src/usage/service.ts'
@@ -97,18 +98,28 @@ function boot(opts: {
   goatPercent: number
   sessionController?: boolean
   defaultSelection?: { provider: string; model: string }
+  /** Set false to model a host whose only key source is the launch environment. */
+  credentials?: boolean
+  launchEnv?: Record<string, string>
 }): Harness {
   const calls = stubUsageEndpoints(opts.goPercent, opts.goatPercent)
   const saved: { provider: string; model: string }[] = []
   const selected: Record<string, unknown>[] = []
   let selection = opts.defaultSelection ?? GO
   const ctx = new Context()
+  if (opts.launchEnv !== undefined) {
+    ctx.provide(
+      'launchEnvironment',
+      createLaunchEnvironmentSnapshot([{ source: 'user-env', values: opts.launchEnv }]),
+    )
+  }
   ctx.provide('credentials', {
     // Keyless env: the managed store is the only source, as under systemd.
     resolve: async (ref: string) =>
-      ref === 'OPENCODE_GO_API_KEY' ? { value: 'go-key' }
-        : ref === 'COMMANDCODE_API_KEY' ? { value: 'goat-key' }
-          : undefined,
+      opts.credentials === false ? undefined
+        : ref === 'OPENCODE_GO_API_KEY' ? { value: 'go-key' }
+          : ref === 'COMMANDCODE_API_KEY' ? { value: 'goat-key' }
+            : undefined,
   })
   ctx.provide('sessionProjections', { register: () => {} })
   ctx.provide('agentDefaultModel', {
@@ -195,5 +206,31 @@ describe('usage-failover switch sink', () => {
     const decision = await h.preStep()
     expect(h.saved).toHaveLength(0)
     expect(noticeTexts(decision)).toContain('切替せず継続')
+  })
+
+  // The adapter authenticates through `launchEnvironmentOf(ctx)`, so a host that
+  // supplies the key only as a launch-environment layer must still reach quota
+  // and fail over; otherwise the guard silently reads "quota is fine" forever.
+  it('reads the pair keys from the launch environment when nothing else has them', async () => {
+    delete process.env.OPENCODE_GO_API_KEY
+    delete process.env.COMMANDCODE_API_KEY
+    const h = boot({
+      goPercent: 90,
+      goatPercent: 5,
+      credentials: false,
+      launchEnv: { OPENCODE_GO_API_KEY: 'launch-go-key', COMMANDCODE_API_KEY: 'launch-goat-key' },
+    })
+    const decision = await h.preStep()
+
+    expect(h.calls).toContainEqual({
+      url: 'https://opencode.ai/zen/go/v1/usage',
+      authorization: 'Bearer launch-go-key',
+    })
+    expect(h.calls).toContainEqual({
+      url: 'https://api.commandcode.ai/alpha/billing/credits',
+      authorization: 'Bearer launch-goat-key',
+    })
+    expect(h.saved).toEqual([{ provider: GOAT.provider, model: GOAT.model }])
+    expect(noticeTexts(decision)).toContain(`${GOAT.provider}/${GOAT.model} に自動切替`)
   })
 })

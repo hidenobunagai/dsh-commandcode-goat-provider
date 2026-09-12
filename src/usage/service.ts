@@ -8,6 +8,7 @@ import { z as zod } from 'zod'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
+import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
@@ -126,9 +127,12 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
   })
 
   /**
-   * Resolve one pair key through the provider's credential chain, then ambient
-   * env. A headless host (systemd, no shell rc) has no key in its environment,
-   * so the managed store is what makes quota reachable there at all.
+   * Resolve one pair key through the same chain the provider uses: managed
+   * credential store, then the launch environment, then the raw process env.
+   * A headless host (systemd, no shell rc) has no key in its environment, so
+   * the managed store is what makes quota reachable there at all; a launcher
+   * that supplies the key as a launch-environment layer must count too, or the
+   * adapter authenticates while the quota guard sees nothing and never fails over.
    */
   const resolveKey = async (ref: string, envName: string): Promise<string | undefined> => {
     try {
@@ -137,6 +141,10 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
         | undefined
       const hit = await credentials?.resolve?.(credentialRef(ref))
       if (hit?.value) return hit.value
+    } catch { /* fall through */ }
+    try {
+      const ambient = launchEnvironmentOf(ctx).get(ref)?.value.trim()
+      if (ambient) return ambient
     } catch { /* fall through */ }
     const direct = process.env[envName]?.trim()
     return direct || undefined
