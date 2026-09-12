@@ -125,24 +125,26 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
     },
   })
 
-  const goKey = (): string | undefined => {
-    const direct = process.env.OPENCODE_GO_API_KEY?.trim()
-    if (direct) return direct
-    return undefined
-  }
-
-  const goatKey = async (): Promise<string | undefined> => {
-    // Resolve through the provider's own credential chain (settings/credentials/env).
+  /**
+   * Resolve one pair key through the provider's credential chain, then ambient
+   * env. A headless host (systemd, no shell rc) has no key in its environment,
+   * so the managed store is what makes quota reachable there at all.
+   */
+  const resolveKey = async (ref: string, envName: string): Promise<string | undefined> => {
     try {
       const credentials = (ctx as unknown as { get?: (k: string) => unknown }).get?.('credentials') as
         | { resolve?: (ref: unknown) => Promise<{ value?: string } | undefined> }
         | undefined
-      const hit = await credentials?.resolve?.(credentialRef('COMMANDCODE_API_KEY'))
+      const hit = await credentials?.resolve?.(credentialRef(ref))
       if (hit?.value) return hit.value
     } catch { /* fall through */ }
-    const direct = process.env.COMMANDCODE_API_KEY?.trim()
+    const direct = process.env[envName]?.trim()
     return direct || undefined
   }
+
+  const goKey = (): Promise<string | undefined> => resolveKey('OPENCODE_GO_API_KEY', 'OPENCODE_GO_API_KEY')
+
+  const goatKey = (): Promise<string | undefined> => resolveKey('COMMANDCODE_API_KEY', 'COMMANDCODE_API_KEY')
 
   /** Refresh both quota snapshots unless the cache is still fresh. */
   const refresh = async (force = false): Promise<void> => {
@@ -151,7 +153,7 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
     if (!force && refreshIntervalMs > 0 && now - live.lastFetchAt < refreshIntervalMs) return
     const [go, goat] = await Promise.all([
       (async () => {
-        const key = goKey()
+        const key = await goKey()
         return key ? fetchGoUsage(key) : null
       })(),
       (async () => {
@@ -198,6 +200,49 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
       source: { kind: 'plugin' as const, plugin: usageServiceName },
     })
 
+  /**
+   * Apply one pair switch. A web host moves this Session through
+   * `sessionController.selectModel`; a headless host has no session-controller
+   * (it waits for web-only services), so the switch lands on the saved default
+   * that the next Agent is created from. `already-default` reports a default
+   * that is already the target, which is how a headless repeat is recognized:
+   * this run keeps its route, so the next step sees the same side again.
+   */
+  const switchRoute = async (
+    agent: Agent,
+    target: { provider: string; model: string },
+    reasoningEffort: string | undefined,
+  ): Promise<'session' | 'default' | 'already-default'> => {
+    const selection = {
+      provider: target.provider,
+      model: target.model,
+      ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
+    }
+    const sessions = (ctx as unknown as { get?: (k: string) => unknown }).get?.('sessionController') as
+      | { selectModel?: (request: unknown) => Promise<unknown> }
+      | undefined
+    const sessionId = (agent as unknown as { session?: { id?: string } }).session?.id
+    if (typeof sessions?.selectModel === 'function' && sessionId !== undefined) {
+      await sessions.selectModel({ sessionId, ...selection })
+      return 'session'
+    }
+    const defaults = (ctx as unknown as { get?: (k: string) => unknown }).get?.('agentDefaultModel') as
+      | {
+        currentSelection?: () => { provider: string; model: string }
+        saveSelection?: (next: unknown) => Promise<void>
+      }
+      | undefined
+    if (typeof defaults?.saveSelection !== 'function') {
+      throw new Error(
+        'neither sessionController.selectModel nor agentDefaultModel.saveSelection is available',
+      )
+    }
+    const current = defaults.currentSelection?.()
+    if (current?.provider === target.provider && current.model === target.model) return 'already-default'
+    await defaults.saveSelection(selection)
+    return 'default'
+  }
+
   ctx.on(
     'agent/pre-step',
     async ({ agent, signal }, next): Promise<PreStepDecision> => {
@@ -228,31 +273,19 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
       const target = FAILOVER_ROUTES[outcome.to]
       live.switching = true
       try {
-        // Session-local switch through the same path the /model picker uses:
-        // `selectModel` resolves the route, moves this Session's next request,
-        // and persists the saved default on its own.
-        const sessions = (ctx as unknown as { get?: (k: string) => unknown }).get?.('sessionController') as
-          | { selectModel?: (request: unknown) => Promise<unknown> }
-          | undefined
-        const sessionId = (agent as unknown as { session?: { id?: string } }).session?.id
-        if (typeof sessions?.selectModel !== 'function' || sessionId === undefined) {
-          throw new Error(
-            `sessionController.selectModel is unavailable (service ${sessions === undefined ? 'absent' : 'present'}, session ${String(sessionId)})`,
-          )
-        }
-        await sessions.selectModel({
-          sessionId,
-          provider: target.provider,
-          model: target.model,
-          ...(route.reasoningEffort === undefined ? {} : { reasoningEffort: route.reasoningEffort }),
-        })
+        // Web: session-local switch through the same path the /model picker
+        // uses. Headless: the saved default, so the next Agent starts on the
+        // target route (this run keeps the route it was created with).
+        const applied = await switchRoute(agent, target, route.reasoningEffort)
+        if (applied === 'already-default') return decision
         live.lastSwitch = { from: active as FailoverSide, to: outcome.to, usagePct: outcome.usagePct, at: Date.now() }
         return {
           ...decision,
           messages: [
             ...decision.messages,
             notice(
-              `usage ${fmtPct(outcome.usagePct)} ≥ ${threshold}% のため ${target.provider}/${target.model} に自動切替（代替側 ${fmtPct(outcome.altPct)}）`,
+              `usage ${fmtPct(outcome.usagePct)} ≥ ${threshold}% のため ${target.provider}/${target.model} に自動切替` +
+              `${applied === 'session' ? '' : '（次回のエージェントから適用）'}（代替側 ${fmtPct(outcome.altPct)}）`,
             ),
           ],
         }
