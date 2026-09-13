@@ -29,6 +29,22 @@ The bundle is configured under the `llm-commandcode-goat` settings namespace:
 | `enableZdr` | `boolean` | `false` | When enabled, requests Zero Data Retention from supported providers. |
 | `protocolOverrides` | `Array<{ model, protocol }>` | `[]` | Explicit wire protocol mappings (`openai` or `anthropic`). |
 
+## Quota & outage auto-switch
+
+The DeepSeek V4.1 Flash pair (`opencode-go-v41/deepseek-flash` ⇄ `commandcode-goat/deepseek/deepseek-v4.1-flash`) switches automatically, and the session-header badge shows both sides' quota plus the last switch. Configured under the `usage-failover` namespace:
+
+| Field | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `enabled` | `boolean` | `true` | Master switch for both triggers. |
+| `threshold` | `number` | `80` | Usage percent that triggers a quota switch. |
+| `refreshIntervalMs` | `number` | `60000` | Minimum ms between quota refetches. |
+| `outageCooldownMs` | `number` | `120000` | How long a failed side stays disqualified as a failover target. |
+
+- **Quota trigger** — at `agent/pre-step`, when the active side's peak window reaches `threshold` and the alternative is below it.
+- **Outage trigger** — at `agent/request-error`, after the failing provider's own retry budget is spent (`llm-retry` runs first, this listener is outermost). The switch is queued for the current run's next request, so the retry leaves the failing route inside the same step.
+- `AUTH`, `PLAN_REQUIRED`, `QUOTA`, `RATE_LIMIT`, `SERVER`, `TIMEOUT`, `TRANSPORT`, `NETWORK`, `PI_AI_ERROR`, `EMPTY_RESPONSE` and HTTP 408/429/5xx count as an unusable route. `ABORTED`, `CONTEXT_WINDOW_EXCEEDED`, and `INVALID_REQUEST` do not: they repeat identically on the other side.
+- Two guards stop the pair from trading the session: a side that failed inside `outageCooldownMs` is not a target, and a target already at `threshold` is left alone.
+
 ## Architecture & Integration
 
 [![Command Code GOAT DSH Provider Architecture](docs/architecture.png)](https://hidenobunagai.github.io/dsh-commandcode-goat-provider/)
