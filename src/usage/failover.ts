@@ -46,6 +46,68 @@ export function decideFailover(
   return { action: 'switch', to: altSide, usagePct, altPct }
 }
 
+/** Provider-neutral codes that mean the route could not serve the request. */
+const UNAVAILABLE_CODES: ReadonlySet<string> = new Set([
+  'AUTH',
+  'EMPTY_RESPONSE',
+  'NETWORK',
+  'PI_AI_ERROR',
+  'PLAN_REQUIRED',
+  'QUOTA',
+  'RATE_LIMIT',
+  'SERVER',
+  'TIMEOUT',
+  'TRANSPORT',
+])
+
+/** The facts of one failed attempt that decide whether the route is at fault. */
+export interface FailureFacts {
+  /** Provider-neutral machine-routing code (`SERVER`, `TIMEOUT`, …). */
+  code: string
+  /** HTTP status returned by the provider, when the adapter saw one. */
+  status?: number
+}
+
+/**
+ * Whether a failed attempt means the route could not serve the request, rather
+ * than the request being wrong. Request-shape failures repeat identically on
+ * the other side, so `ABORTED`, `CONTEXT_WINDOW_EXCEEDED`,
+ * `INVALID_REQUEST`, and `UNKNOWN_MODEL` stay out.
+ * @param failure - the failed attempt's code and status.
+ * @returns true when switching routes can plausibly recover.
+ */
+export function isUnavailableFailure(failure: FailureFacts): boolean {
+  if (failure.status === 408 || failure.status === 429 || (failure.status ?? 0) >= 500) return true
+  return UNAVAILABLE_CODES.has(failure.code)
+}
+
+/** Where an outage decision leaves the session. */
+export type OutageOutcome =
+  | { action: 'stay'; reason: string }
+  | { action: 'switch'; to: FailoverSide }
+  | { action: 'hold'; to: FailoverSide; reason: 'alt-recently-failed' | 'alt-hot' }
+
+/**
+ * Decide whether a failed attempt moves the session to the other side. An
+ * alternative that failed inside the cooldown is what stops two dead providers
+ * from trading the session back and forth, one retry budget each round.
+ * @param active - the side whose attempt failed (null when off-pair).
+ * @param alt - the other side's health: a failure inside the cooldown, and its quota peak when known.
+ * @param threshold - usage percent at or above which the other side counts as hot.
+ * @returns switch/hold/stay with the reason.
+ */
+export function decideOutageFailover(
+  active: FailoverSide | null,
+  alt: { recentlyFailed: boolean; usagePct: number | null },
+  threshold: number,
+): OutageOutcome {
+  if (active === null) return { action: 'stay', reason: 'not-on-pair' }
+  const to: FailoverSide = active === 'go' ? 'goat' : 'go'
+  if (alt.recentlyFailed) return { action: 'hold', to, reason: 'alt-recently-failed' }
+  if (alt.usagePct !== null && alt.usagePct >= threshold) return { action: 'hold', to, reason: 'alt-hot' }
+  return { action: 'switch', to }
+}
+
 /** Route identity for each failover side (DeepSeek V4.1 Flash pair). */
 export const FAILOVER_ROUTES: Record<FailoverSide, { provider: string; model: string }> = {
   go: { provider: 'opencode-go-v41', model: 'deepseek-flash' },

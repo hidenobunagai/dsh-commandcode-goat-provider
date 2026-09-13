@@ -26,6 +26,7 @@ export interface UsageBadgeText {
   autoOff: string
   autoNever: string
   autoLast: string
+  autoError: string
   hot: string
   quota: string
 }
@@ -48,6 +49,7 @@ const FALLBACK: UsageBadgeText = {
   autoOff: 'Auto-switch off',
   autoNever: 'No switch has fired yet',
   autoLast: 'Last switch',
+  autoError: 'provider failure',
   hot: 'at or over threshold',
   quota: 'Provider quota',
 }
@@ -358,7 +360,11 @@ export function UsageBadge({ useProjection, useSession, t = FALLBACK, failoverSc
                   <span className={css.arrowMark} aria-hidden="true">→</span>
                   {model.lastSwitch.to === 'go' ? t.go : t.goat}
                 </span>
-                <span className={css.footValue}>{Math.round(model.lastSwitch.usagePct)}%</span>
+                <span className={css.footValue}>
+                  {model.lastSwitch.reason === 'error'
+                    ? model.lastSwitch.detail ?? t.autoError
+                    : `${Math.round(model.lastSwitch.usagePct)}%`}
+                </span>
               </>
             ) : (
               <>

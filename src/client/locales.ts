@@ -53,6 +53,7 @@ export type LocaleKey =
   | 'usageAutoOff'
   | 'usageAutoNever'
   | 'usageAutoLast'
+  | 'usageAutoError'
   | 'usageHot'
   | 'usageQuota'
 
@@ -109,6 +110,7 @@ export const EN_LOCALES: Record<LocaleKey, string> = {
   usageAutoOff: 'Auto-switch off',
   usageAutoNever: 'No switch has fired yet',
   usageAutoLast: 'Last switch',
+  usageAutoError: 'provider failure',
   usageHot: 'at or over threshold',
   usageQuota: 'Provider quota',
 }
@@ -166,6 +168,7 @@ export const JA_LOCALES: Record<LocaleKey, string> = {
   usageAutoOff: '自動切替オフ',
   usageAutoNever: 'まだ切り替わっていません',
   usageAutoLast: '前回の切替',
+  usageAutoError: 'プロバイダー障害',
   usageHot: 'しきい値以上',
   usageQuota: 'プロバイダー残量',
 }

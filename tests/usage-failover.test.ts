@@ -3,7 +3,14 @@ import { Context } from '@deepseek-ai/cordis'
 import { installModelSelection, type Agent } from '@deepseek-ai/dsh-agent'
 import { createLaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment'
 import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
-import { decideFailover, sideOf, FAILOVER_ROUTES, type FailoverSide } from '../src/usage/failover.ts'
+import {
+  decideFailover,
+  decideOutageFailover,
+  isUnavailableFailure,
+  sideOf,
+  FAILOVER_ROUTES,
+  type FailoverSide,
+} from '../src/usage/failover.ts'
 import { maxPercent, type UsageSnapshot } from '../src/usage/fetch.ts'
 import { applyUsageService, UsageFailoverConfigSchema } from '../src/usage/service.ts'
 
@@ -42,6 +49,29 @@ describe('usage failover decision', () => {
   })
   it('takes the max window percent', () => {
     expect(maxPercent(snap(10, 79, 30))).toBe(79)
+  })
+})
+
+describe('outage failover decision', () => {
+  it('treats a route that cannot serve as switchable, a wrong request as not', () => {
+    expect(isUnavailableFailure({ code: 'SERVER', status: 503 })).toBe(true)
+    expect(isUnavailableFailure({ code: 'UNKNOWN', status: 502 })).toBe(true)
+    expect(isUnavailableFailure({ code: 'TIMEOUT' })).toBe(true)
+    expect(isUnavailableFailure({ code: 'AUTH', status: 401 })).toBe(true)
+    expect(isUnavailableFailure({ code: 'INVALID_REQUEST', status: 400 })).toBe(false)
+    expect(isUnavailableFailure({ code: 'ABORTED' })).toBe(false)
+    expect(isUnavailableFailure({ code: 'CONTEXT_WINDOW_EXCEEDED' })).toBe(false)
+  })
+  it('switches only to a healthy alternative', () => {
+    expect(decideOutageFailover('go', { recentlyFailed: false, usagePct: 5 }, 80))
+      .toEqual({ action: 'switch', to: 'goat' })
+    expect(decideOutageFailover('goat', { recentlyFailed: false, usagePct: null }, 80))
+      .toEqual({ action: 'switch', to: 'go' })
+    expect(decideOutageFailover('go', { recentlyFailed: true, usagePct: 5 }, 80))
+      .toMatchObject({ action: 'hold', to: 'goat', reason: 'alt-recently-failed' })
+    expect(decideOutageFailover('go', { recentlyFailed: false, usagePct: 80 }, 80))
+      .toMatchObject({ action: 'hold', to: 'goat', reason: 'alt-hot' })
+    expect(decideOutageFailover(null, { recentlyFailed: false, usagePct: null }, 80).action).toBe('stay')
   })
 })
 
@@ -98,8 +128,14 @@ interface Harness {
   saved: { provider: string; model: string }[]
   selected: Record<string, unknown>[]
   calls: { url: string; authorization: string | undefined }[]
+  injected: unknown[]
   preStep: (route?: { provider: string; model: string }) => Promise<{ messages: unknown[] }>
   request: (route?: RequestRoute) => Promise<RequestRoute>
+  requestError: (
+    route: { provider: string; model: string },
+    failure: { code: string; status?: number },
+    next?: () => Promise<{ kind: 'retry' } | undefined>,
+  ) => Promise<{ kind: 'retry' } | undefined>
 }
 
 /** Boot the real service against stubbed host services and a usage endpoint. */
@@ -118,6 +154,8 @@ function boot(opts: {
   /** Cache window; non-zero exercises the warmup/refresh gate. */
   refreshIntervalMs?: number
   launchEnv?: Record<string, string>
+  /** Set false to model a host with no durable default-model service. */
+  defaultModel?: boolean
 }): Harness {
   const calls = stubUsageEndpoints(opts.goPercent, opts.goatPercent)
   const saved: { provider: string; model: string }[] = []
@@ -139,13 +177,15 @@ function boot(opts: {
             : undefined,
   })
   ctx.provide('sessionProjections', { register: () => {} })
-  ctx.provide('agentDefaultModel', {
-    currentSelection: () => ({ ...selection }),
-    saveSelection: async (next: { provider: string; model: string }) => {
-      saved.push(next)
-      selection = next
-    },
-  })
+  if (opts.defaultModel !== false) {
+    ctx.provide('agentDefaultModel', {
+      currentSelection: () => ({ ...selection }),
+      saveSelection: async (next: { provider: string; model: string }) => {
+        saved.push(next)
+        selection = next
+      },
+    })
+  }
   if (opts.sessionController === true) {
     ctx.provide('sessionController', {
       selectModel: async (request: Record<string, unknown>) => {
@@ -163,8 +203,10 @@ function boot(opts: {
   }
 
   let header: { provider: string; model: string } = GO
+  const injected: unknown[] = []
   const agent = {
     session: { id: 'session-under-test', requestHeader: () => ({ config: header }) },
+    inject: (message: unknown) => { injected.push(message) },
   } as unknown as Agent
   const preStep = async (route: { provider: string; model: string } = GO) => {
     header = route
@@ -180,10 +222,32 @@ function boot(opts: {
       { agent, turn: 1, step: 1, signal: new AbortController().signal },
       () => Promise.resolve(route),
     ) as Promise<RequestRoute>
-  return { ctx, saved, selected, calls, preStep, request }
+  const requestError = (
+    route: { provider: string; model: string },
+    failure: { code: string; status?: number },
+    next: () => Promise<{ kind: 'retry' } | undefined> = () => Promise.resolve(undefined),
+  ) => {
+    header = route
+    return ctx.waterfall(
+      'agent/request-error',
+      {
+        agent,
+        turn: 1,
+        step: 1,
+        provider: route.provider,
+        failure: { message: `stub failure ${failure.code}`, ...failure },
+        retryPolicy: undefined,
+        signal: new AbortController().signal,
+      },
+      next,
+    ) as Promise<{ kind: 'retry' } | undefined>
+  }
+  return { ctx, saved, selected, calls, injected, preStep, request, requestError }
 }
 const noticeTexts = (decision: { messages: unknown[] }): string =>
-  decision.messages
+  messageTexts(decision.messages)
+const messageTexts = (messages: unknown[]): string =>
+  messages
     .map((m) => (m as { content?: { text?: string }[] }).content?.map((c) => c.text ?? '').join('') ?? '')
     .join('\n')
 
@@ -307,5 +371,79 @@ describe('usage-failover switch sink', () => {
     })
     expect(h.saved).toEqual([{ provider: GOAT.provider, model: GOAT.model }])
     expect(noticeTexts(decision)).toContain(`${GOAT.provider}/${GOAT.model} に自動切替`)
+  })
+})
+
+describe('usage-failover outage recovery', () => {
+  const env = process.env.OPENCODE_GO_API_KEY
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    if (env === undefined) delete process.env.OPENCODE_GO_API_KEY
+    else process.env.OPENCODE_GO_API_KEY = env
+  })
+
+  it('leaves recovery to the retry owner while its budget lasts', async () => {
+    delete process.env.OPENCODE_GO_API_KEY
+    const h = boot({ goPercent: 5, goatPercent: 5 })
+    const action = await h.requestError(GO, { code: 'SERVER', status: 503 }, () => Promise.resolve({ kind: 'retry' }))
+
+    expect(action).toEqual({ kind: 'retry' })
+    expect(h.saved).toHaveLength(0)
+    expect(h.injected).toHaveLength(0)
+  })
+
+  it('moves this run onto the other side once the failing route is given up on', async () => {
+    delete process.env.OPENCODE_GO_API_KEY
+    const h = boot({ goPercent: 5, goatPercent: 5 })
+    const action = await h.requestError(GO, { code: 'SERVER', status: 503 })
+
+    expect(action).toEqual({ kind: 'retry' })
+    expect(h.saved).toEqual([{ provider: GOAT.provider, model: GOAT.model }])
+    // The retry lands inside the same step, so the queued route is what moves it.
+    expect(await h.request(GO)).toMatchObject({ provider: GOAT.provider, model: GOAT.model })
+    expect(messageTexts(h.injected)).toContain(`${GOAT.provider}/${GOAT.model} に自動切替`)
+    expect(messageTexts(h.injected)).toContain('SERVER (503)')
+  })
+
+  it('never trades two failing sides back and forth', async () => {
+    delete process.env.OPENCODE_GO_API_KEY
+    const h = boot({ goPercent: 5, goatPercent: 5 })
+    await h.requestError(GO, { code: 'TIMEOUT' })
+    const back = await h.requestError(GOAT, { code: 'TIMEOUT' })
+
+    expect(back).toBeUndefined()
+    expect(h.saved).toEqual([{ provider: GOAT.provider, model: GOAT.model }])
+    expect(messageTexts(h.injected)).toContain('代替側も直近で失敗しているため切替せず継続')
+  })
+
+  it('keeps the session put when the alternative is over quota', async () => {
+    delete process.env.OPENCODE_GO_API_KEY
+    const h = boot({ goPercent: 5, goatPercent: 95 })
+    await h.preStep(GO)
+    const action = await h.requestError(GO, { code: 'SERVER', status: 503 })
+
+    expect(action).toBeUndefined()
+    expect(h.saved).toHaveLength(0)
+    expect(messageTexts(h.injected)).toContain('代替側の usage が高いため切替せず継続')
+  })
+
+  it('ignores a rejected request, which repeats identically on the other side', async () => {
+    delete process.env.OPENCODE_GO_API_KEY
+    const h = boot({ goPercent: 5, goatPercent: 5 })
+    const action = await h.requestError(GO, { code: 'INVALID_REQUEST', status: 400 })
+
+    expect(action).toBeUndefined()
+    expect(h.saved).toHaveLength(0)
+    expect(h.injected).toHaveLength(0)
+  })
+
+  it('still moves the request when only the durable switch is unavailable', async () => {
+    delete process.env.OPENCODE_GO_API_KEY
+    const h = boot({ goPercent: 5, goatPercent: 5, defaultModel: false })
+
+    const action = await h.requestError(GO, { code: 'NETWORK' })
+
+    expect(action).toEqual({ kind: 'retry' })
+    expect(await h.request(GO)).toMatchObject({ provider: GOAT.provider, model: GOAT.model })
   })
 })

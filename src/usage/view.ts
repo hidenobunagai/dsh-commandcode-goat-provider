@@ -25,5 +25,14 @@ export interface UsageFailoverView {
   go: UsageSideView | null
   goat: UsageSideView | null
   enabled: boolean
-  lastSwitch?: { from: 'go' | 'goat'; to: 'go' | 'goat'; usagePct: number; at: number }
+  lastSwitch?: {
+    from: 'go' | 'goat'
+    to: 'go' | 'goat'
+    usagePct: number
+    at: number
+    /** What fired the switch; absent means a quota switch. */
+    reason?: 'usage' | 'error'
+    /** The failure behind an error switch, e.g. `SERVER (503)`. */
+    detail?: string
+  }
 }

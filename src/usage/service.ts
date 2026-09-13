@@ -14,9 +14,16 @@ import type {} from '@deepseek-ai/dsh-session-projection'
 import { createUserMessage, type ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-session-projection/types'
-import { fetchGoUsage, fetchGoatUsage, type UsageSnapshot } from './fetch.ts'
+import { fetchGoUsage, fetchGoatUsage, maxPercent, type UsageSnapshot } from './fetch.ts'
 import type { UsageFailoverView as SharedView } from './view.ts'
-import { decideFailover, FAILOVER_ROUTES, sideOf, type FailoverSide } from './failover.ts'
+import {
+  decideFailover,
+  decideOutageFailover,
+  FAILOVER_ROUTES,
+  isUnavailableFailure,
+  sideOf,
+  type FailoverSide,
+} from './failover.ts'
 
 /** Cordis plugin name used by loader diagnostics. */
 export const usageServiceName = 'usage-failover'
@@ -50,6 +57,8 @@ const viewSchema: zod.ZodType<UsageFailoverView> = zod.object({
     to: zod.enum(['go', 'goat']),
     usagePct: zod.number(),
     at: zod.number(),
+    reason: zod.enum(['usage', 'error']).optional(),
+    detail: zod.string().optional(),
   }).optional(),
 })
 
@@ -72,6 +81,8 @@ export interface UsageFailoverConfig {
   threshold?: number
   /** Minimum ms between quota refetches (default 60000). */
   refreshIntervalMs?: number
+  /** How long a failed side stays disqualified as a failover target (default 120000). */
+  outageCooldownMs?: number
 }
 
 /** Schemastery validation for the failover settings section. */
@@ -79,6 +90,7 @@ export const UsageFailoverConfigSchema: z<UsageFailoverConfig> = z.object({
   enabled: z.boolean().default(true),
   threshold: z.number().min(1).max(100).default(80),
   refreshIntervalMs: z.number().step(1).min(0).default(60000),
+  outageCooldownMs: z.number().step(1).min(0).default(120000),
 })
 
 const NS = 'usage-failover'
@@ -89,6 +101,8 @@ interface Live {
   lastFetchAt: number
   lastSwitch: UsageFailoverView['lastSwitch']
   switching: boolean
+  /** When each side last failed as unavailable; a recent failure disqualifies it as a target. */
+  outageAt: Record<FailoverSide, number>
 }
 
 /** Route a running Agent's next request must take when no live selection ref is reachable. */
@@ -107,12 +121,20 @@ const fmtPct = (v: number): string => `${Math.round(v)}%`
  */
 export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}): void {
   let current: () => UsageFailoverConfig = () => config
-  const live: Live = { go: null, goat: null, lastFetchAt: 0, lastSwitch: undefined, switching: false }
+  const live: Live = {
+    go: null,
+    goat: null,
+    lastFetchAt: 0,
+    lastSwitch: undefined,
+    switching: false,
+    outageAt: { go: 0, goat: 0 },
+  }
 
   const getConfig = (): Required<UsageFailoverConfig> => ({
     enabled: current().enabled ?? true,
     threshold: current().threshold ?? 80,
     refreshIntervalMs: current().refreshIntervalMs ?? 60000,
+    outageCooldownMs: current().outageCooldownMs ?? 120000,
   })
 
   const buildView = (): UsageFailoverView => {
@@ -223,6 +245,12 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
   /** Route each running Agent's next request must take while its live ref is out of reach. */
   const inflight = new WeakMap<Agent, InflightRoute>()
 
+  const routeTo = (target: { provider: string; model: string }, reasoningEffort: string | undefined): InflightRoute => ({
+    provider: target.provider,
+    model: target.model,
+    ...(reasoningEffort === undefined ? {} : { reasoningEffort: reasoningEffort as ReasoningEffortId }),
+  })
+
   /**
    * Queue one pair switch for a running Agent. A web host moves this Session
    * through `sessionController.selectModel`; a headless host has no
@@ -238,11 +266,7 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
     target: { provider: string; model: string },
     reasoningEffort: string | undefined,
   ): Promise<'session' | 'inflight' | 'already-default'> => {
-    const selection: InflightRoute = {
-      provider: target.provider,
-      model: target.model,
-      ...(reasoningEffort === undefined ? {} : { reasoningEffort: reasoningEffort as ReasoningEffortId }),
-    }
+    const selection = routeTo(target, reasoningEffort)
     const sessions = (ctx as unknown as { get?: (k: string) => unknown }).get?.('sessionController') as
       | { selectModel?: (request: unknown) => Promise<unknown> }
       | undefined
@@ -352,6 +376,71 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
       } finally {
         live.switching = false
       }
+    },
+    { prepend: true },
+  )
+
+  /**
+   * Move the session off a route that cannot serve requests. This listener is
+   * outermost on the waterfall, so it delegates first and only takes over once
+   * `llm-retry` has spent the provider's retry budget: a transient failure is
+   * still absorbed in place, and an outage costs one provider's worth of
+   * backoff before the other side gets the request.
+   */
+  ctx.on(
+    'agent/request-error',
+    async ({ agent, failure, signal }, next) => {
+      const decision = await next()
+      // A downstream owner already scheduled a retry, or the turn was cancelled.
+      if (decision?.kind === 'retry' || signal.aborted) return decision
+      const { enabled, threshold, outageCooldownMs } = getConfig()
+      if (!enabled || !isUnavailableFailure(failure)) return decision
+      const route = currentRoute(agent)
+      const active = sideOf(route.provider, route.model)
+      const alt: FailoverSide | null = active === 'go' ? 'goat' : active === 'goat' ? 'go' : null
+      const outcome = decideOutageFailover(active, {
+        recentlyFailed: alt === null ? false : Date.now() - live.outageAt[alt] < outageCooldownMs,
+        // Quota is a hint here, not a gate: a stale snapshot must never keep the
+        // session on a route that is refusing requests.
+        usagePct: alt !== null && live[alt] ? maxPercent(live[alt]) : null,
+      }, threshold)
+      if (outcome.action === 'stay' || active === null) return decision
+
+      const from = FAILOVER_ROUTES[active]
+      const target = FAILOVER_ROUTES[outcome.to]
+      const detail = failure.status === undefined ? failure.code : `${failure.code} (${failure.status})`
+      if (outcome.action === 'hold') {
+        agent.inject(notice(
+          `${from.provider}/${from.model} が ${detail} で失敗したが${outcome.reason === 'alt-hot' ? '代替側の usage が高い' : '代替側も直近で失敗している'}ため切替せず継続`,
+        ))
+        return decision
+      }
+
+      // The retry happens inside this step, where the session's own selection may
+      // not be re-read, so the queued route is what actually moves the request.
+      inflight.set(agent, routeTo(target, route.reasoningEffort))
+      live.outageAt[active] = Date.now()
+      try {
+        await switchRoute(agent, target, route.reasoningEffort)
+      } catch (error) {
+        // The queued route still moves this Agent's next request; only the
+        // durable switch failed, and that must reach the operator.
+        ctx.logger.warn(
+          `usage-failover: outage switch to ${target.provider}/${target.model} failed; retrying on the queued route: ${String(error)}`,
+        )
+      }
+      live.lastSwitch = {
+        from: active,
+        to: outcome.to,
+        usagePct: live[active] ? maxPercent(live[active]) : 0,
+        at: Date.now(),
+        reason: 'error',
+        detail,
+      }
+      agent.inject(notice(
+        `${from.provider}/${from.model} が ${detail} で失敗したため ${target.provider}/${target.model} に自動切替`,
+      ))
+      return { kind: 'retry' }
     },
     { prepend: true },
   )
