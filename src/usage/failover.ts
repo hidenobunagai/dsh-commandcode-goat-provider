@@ -22,6 +22,8 @@ export interface UsagePair {
 export interface FailoverOpts {
   /** Whether to fallback to the free model when both sides are hot (default true). */
   fallbackToFree?: boolean
+  /** Usage percent that triggers fallback to free model (default 90). */
+  freeThreshold?: number
 }
 
 /** Where the decision leaves the session. */
@@ -35,7 +37,7 @@ export type FailoverOutcome =
  * @param active - the session's current side (null when on neither pair member).
  * @param pair - fresh snapshots for both sides (null when unfetched).
  * @param threshold - usage percent that triggers failover.
- * @param opts - optional flags such as fallbackToFree.
+ * @param opts - optional flags such as fallbackToFree and freeThreshold.
  * @returns stay/switch/hold-both-hot with percents for notices.
  */
 export function decideFailover(
@@ -46,13 +48,14 @@ export function decideFailover(
 ): FailoverOutcome {
   if (active === null) return { action: 'stay', reason: 'not-on-pair' }
   const fallbackToFree = opts.fallbackToFree ?? true
+  const freeThreshold = opts.freeThreshold ?? 90
 
   if (active === 'free') {
-    // Check if either primary side has recovered below the threshold
+    // Check if either primary side has recovered below the freeThreshold
     const goPct = pair.go ? maxPercent(pair.go) : null
     const goatPct = pair.goat ? maxPercent(pair.goat) : null
-    const goCool = goPct !== null && goPct < threshold
-    const goatCool = goatPct !== null && goatPct < threshold
+    const goCool = goPct !== null && goPct < freeThreshold
+    const goatCool = goatPct !== null && goatPct < freeThreshold
 
     if (goCool && goatCool) {
       const target: FailoverSide = (goPct ?? 0) <= (goatPct ?? 0) ? 'go' : 'goat'
@@ -76,12 +79,25 @@ export function decideFailover(
   const alt = pair[altSide]
   if (!alt) return { action: 'stay', reason: 'no-alt-usage' }
   const altPct = maxPercent(alt)
+
   if (altPct < threshold) {
     return { action: 'switch', to: altSide, usagePct, altPct }
   }
+
+  // Both sides are >= threshold (e.g. >= 80%).
   if (fallbackToFree) {
-    return { action: 'switch', to: 'free', usagePct, altPct }
+    // If both are >= freeThreshold (e.g. >= 90%) -> switch to free
+    if (usagePct >= freeThreshold && altPct >= freeThreshold) {
+      return { action: 'switch', to: 'free', usagePct, altPct }
+    }
+    // If active is exhausted (>= freeThreshold) but alt is still below freeThreshold -> switch to alt!
+    if (usagePct >= freeThreshold && altPct < freeThreshold) {
+      return { action: 'switch', to: altSide, usagePct, altPct }
+    }
+    // If active is below freeThreshold (e.g. 85%), keep using active side
+    return { action: 'hold-both-hot', usagePct, altPct }
   }
+
   return { action: 'hold-both-hot', usagePct, altPct }
 }
 
@@ -143,13 +159,15 @@ export function decideOutageFailover(
 ): OutageOutcome {
   if (active === null) return { action: 'stay', reason: 'not-on-pair' }
   const fallbackToFree = opts.fallbackToFree ?? true
+  const freeThreshold = opts.freeThreshold ?? 90
 
   if (active === 'free') {
     return { action: 'stay', reason: 'free-outage' }
   }
 
   const to: FailoverSide = active === 'go' ? 'goat' : 'go'
-  if (alt.recentlyFailed || (alt.usagePct !== null && alt.usagePct >= threshold)) {
+  const limit = fallbackToFree ? freeThreshold : threshold
+  if (alt.recentlyFailed || (alt.usagePct !== null && alt.usagePct >= limit)) {
     if (fallbackToFree) {
       return { action: 'switch', to: 'free' }
     }

@@ -30,16 +30,25 @@ describe('usage failover decision', () => {
     const r = decideFailover('go', { go: snap(85, 10, 10), goat: snap(5, 5, 5) }, 80)
     expect(r).toMatchObject({ action: 'switch', to: 'goat' })
   })
-  it('switches to free when both sides are hot', () => {
+  it('holds active when both sides are hot (>=80%) but active is below freeThreshold (<90%)', () => {
     const r = decideFailover('goat', { go: snap(90, 90, 90), goat: snap(81, 10, 10) }, 80)
+    expect(r.action).toBe('hold-both-hot')
+  })
+  it('switches to alt when active is exhausted (>=90%) but alt is below freeThreshold (<90%)', () => {
+    const r = decideFailover('goat', { go: snap(85, 10, 10), goat: snap(95, 10, 10) }, 80)
+    expect(r).toMatchObject({ action: 'switch', to: 'go' })
+  })
+  it('switches to free when both sides are hot and >= freeThreshold (90%)', () => {
+    const r = decideFailover('goat', { go: snap(90, 90, 90), goat: snap(92, 10, 10) }, 80)
     expect(r).toMatchObject({ action: 'switch', to: 'free' })
   })
   it('holds when both sides are hot and fallbackToFree is disabled', () => {
-    const r = decideFailover('goat', { go: snap(90, 90, 90), goat: snap(81, 10, 10) }, 80, { fallbackToFree: false })
+    const r = decideFailover('goat', { go: snap(90, 90, 90), goat: snap(92, 10, 10) }, 80, { fallbackToFree: false })
     expect(r.action).toBe('hold-both-hot')
   })
-  it('recovers from free when a primary side cools down', () => {
+  it('recovers from free when a primary side cools down below freeThreshold', () => {
     expect(decideFailover('free', { go: snap(50, 50, 50), goat: snap(90, 90, 90) }, 80)).toMatchObject({ action: 'switch', to: 'go' })
+    expect(decideFailover('free', { go: snap(85, 85, 85), goat: snap(95, 95, 95) }, 80)).toMatchObject({ action: 'switch', to: 'go' })
     expect(decideFailover('free', { go: snap(90, 90, 90), goat: snap(40, 40, 40) }, 80)).toMatchObject({ action: 'switch', to: 'goat' })
     expect(decideFailover('free', { go: snap(90, 90, 90), goat: snap(90, 90, 90) }, 80)).toMatchObject({ action: 'stay', reason: 'stay-on-free' })
   })
@@ -81,6 +90,8 @@ describe('outage failover decision', () => {
     expect(decideOutageFailover('go', { recentlyFailed: true, usagePct: 5 }, 80))
       .toEqual({ action: 'switch', to: 'free' })
     expect(decideOutageFailover('go', { recentlyFailed: false, usagePct: 80 }, 80))
+      .toEqual({ action: 'switch', to: 'goat' })
+    expect(decideOutageFailover('go', { recentlyFailed: false, usagePct: 90 }, 80))
       .toEqual({ action: 'switch', to: 'free' })
     expect(decideOutageFailover('go', { recentlyFailed: true, usagePct: 5 }, 80, { fallbackToFree: false }))
       .toMatchObject({ action: 'hold', to: 'goat', reason: 'alt-recently-failed' })
@@ -96,7 +107,7 @@ describe('usage-failover settings section', () => {
   // than turning the guard off.
   it('defaults the automation on when only `enabled` is configured', () => {
     const resolved = UsageFailoverConfigSchema({ enabled: true })
-    expect(resolved).toMatchObject({ enabled: true, threshold: 80, refreshIntervalMs: 60000 })
+    expect(resolved).toMatchObject({ enabled: true, threshold: 80, freeThreshold: 90, refreshIntervalMs: 60000 })
   })
   it('carries an explicit opt-out through', () => {
     expect(UsageFailoverConfigSchema({ enabled: false })).toMatchObject({ enabled: false })
@@ -104,6 +115,10 @@ describe('usage-failover settings section', () => {
   it('refuses a threshold outside 1-100', () => {
     expect(() => UsageFailoverConfigSchema({ threshold: 0 })).toThrow()
     expect(() => UsageFailoverConfigSchema({ threshold: 101 })).toThrow()
+  })
+  it('refuses a freeThreshold outside 1-100', () => {
+    expect(() => UsageFailoverConfigSchema({ freeThreshold: 0 })).toThrow()
+    expect(() => UsageFailoverConfigSchema({ freeThreshold: 101 })).toThrow()
   })
 })
 

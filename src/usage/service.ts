@@ -80,6 +80,8 @@ export interface UsageFailoverConfig {
   enabled?: boolean
   /** Usage percent that triggers failover (default 80). */
   threshold?: number
+  /** Usage percent that triggers fallback to free model (default 90). */
+  freeThreshold?: number
   /** Minimum ms between quota refetches (default 60000). */
   refreshIntervalMs?: number
   /** How long a failed side stays disqualified as a failover target (default 120000). */
@@ -94,6 +96,7 @@ export interface UsageFailoverConfig {
 export const UsageFailoverConfigSchema: z<UsageFailoverConfig> = z.object({
   enabled: z.boolean().default(true),
   threshold: z.number().min(1).max(100).default(80),
+  freeThreshold: z.number().min(1).max(100).default(90),
   refreshIntervalMs: z.number().step(1).min(0).default(60000),
   outageCooldownMs: z.number().step(1).min(0).default(120000),
   fallbackToFree: z.boolean().default(true),
@@ -140,6 +143,7 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
   const getConfig = (): Required<UsageFailoverConfig> => ({
     enabled: current().enabled ?? true,
     threshold: current().threshold ?? 80,
+    freeThreshold: current().freeThreshold ?? 90,
     refreshIntervalMs: current().refreshIntervalMs ?? 60000,
     outageCooldownMs: current().outageCooldownMs ?? 120000,
     fallbackToFree: current().fallbackToFree ?? true,
@@ -342,7 +346,7 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
     async ({ agent, signal }, next): Promise<PreStepDecision> => {
       const decision = await next()
       if (decision.kind === 'reject' || signal.aborted) return decision
-      const { enabled, threshold, fallbackToFree, freeModel } = getConfig()
+      const { enabled, threshold, freeThreshold, fallbackToFree, freeModel } = getConfig()
       if (!enabled || live.switching) return decision
       try {
         await refresh()
@@ -351,7 +355,10 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
       }
       const route = currentRoute(agent)
       const active = sideOf(route.provider, route.model, freeModel)
-      const outcome = decideFailover(active, { go: live.go, goat: live.goat }, threshold, { fallbackToFree })
+      const outcome = decideFailover(active, { go: live.go, goat: live.goat }, threshold, {
+        fallbackToFree,
+        freeThreshold,
+      })
       if (outcome.action === 'stay') return decision
       if (outcome.action === 'hold-both-hot') {
         return {
@@ -375,7 +382,7 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
         live.lastSwitch = { from: active as FailoverSide, to: outcome.to, usagePct: outcome.usagePct, at: Date.now() }
         let switchNotice: string
         if (outcome.to === 'free') {
-          switchNotice = `usage ${fmtPct(outcome.usagePct)} ≥ ${threshold}% かつ代替側も ${fmtPct(outcome.altPct)} のため Free モデル (${target.provider}/${target.model}) に自動切替`
+          switchNotice = `usage ${fmtPct(outcome.usagePct)} ≥ ${freeThreshold}% かつ代替側も ${fmtPct(outcome.altPct)} ≥ ${freeThreshold}% のため Free モデル (${target.provider}/${target.model}) に自動切替`
         } else if (active === 'free') {
           switchNotice = `主力側 (${target.provider}/${target.model}) の usage が回復したため自動復帰（代替側 ${fmtPct(outcome.altPct)}）`
         } else {
@@ -415,7 +422,7 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
       const decision = await next()
       // A downstream owner already scheduled a retry, or the turn was cancelled.
       if (decision?.kind === 'retry' || signal.aborted) return decision
-      const { enabled, threshold, outageCooldownMs, fallbackToFree, freeModel } = getConfig()
+      const { enabled, threshold, freeThreshold, outageCooldownMs, fallbackToFree, freeModel } = getConfig()
       if (!enabled || !isUnavailableFailure(failure)) return decision
       const route = currentRoute(agent)
       const active = sideOf(route.provider, route.model, freeModel)
@@ -425,7 +432,7 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
         // Quota is a hint here, not a gate: a stale snapshot must never keep the
         // session on a route that is refusing requests.
         usagePct: alt !== null && live[alt] ? maxPercent(live[alt]) : null,
-      }, threshold, { fallbackToFree })
+      }, threshold, { fallbackToFree, freeThreshold })
       if (outcome.action === 'stay' || active === null) return decision
 
       const from = targetRouteOf(active)
