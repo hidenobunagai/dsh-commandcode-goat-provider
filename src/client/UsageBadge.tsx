@@ -12,6 +12,7 @@ const HOT_PERCENT = 80
 export interface UsageBadgeText {
   go: string
   goat: string
+  free: string
   window5h: string
   windowWeek: string
   windowMonth: string
@@ -35,6 +36,7 @@ export interface UsageBadgeText {
 const FALLBACK: UsageBadgeText = {
   go: 'Go',
   goat: 'GOAT',
+  free: 'Free',
   window5h: '5h',
   windowWeek: 'week',
   windowMonth: 'month',
@@ -356,9 +358,9 @@ export function UsageBadge({ useProjection, useSession, t = FALLBACK, failoverSc
               <>
                 <span className={css.footLabel}>{t.autoLast}</span>
                 <span className={css.footArrow}>
-                  {model.lastSwitch.from === 'go' ? t.go : t.goat}
+                  {model.lastSwitch.from === 'go' ? t.go : model.lastSwitch.from === 'goat' ? t.goat : t.free}
                   <span className={css.arrowMark} aria-hidden="true">→</span>
-                  {model.lastSwitch.to === 'go' ? t.go : t.goat}
+                  {model.lastSwitch.to === 'go' ? t.go : model.lastSwitch.to === 'goat' ? t.goat : t.free}
                 </span>
                 <span className={css.footValue}>
                   {model.lastSwitch.reason === 'error'

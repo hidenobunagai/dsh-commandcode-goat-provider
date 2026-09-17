@@ -35,15 +35,17 @@ The DeepSeek V4.1 Flash pair (`opencode-go-v41/deepseek-flash` ⇄ `commandcode-
 
 | Field | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `enabled` | `boolean` | `true` | Master switch for both triggers. |
+| `enabled` | `boolean` | `true` | Master switch for all triggers. |
 | `threshold` | `number` | `80` | Usage percent that triggers a quota switch. |
 | `refreshIntervalMs` | `number` | `60000` | Minimum ms between quota refetches. |
 | `outageCooldownMs` | `number` | `120000` | How long a failed side stays disqualified as a failover target. |
+| `fallbackToFree` | `boolean` | `true` | Fall back to a free model when both sides are over quota or unusable. |
+| `freeModel` | `string` | `'poolside/laguna-s-2.1-free'` | Model id on `commandcode-goat` for free fallback. |
 
-- **Quota trigger** — at `agent/pre-step`, when the active side's peak window reaches `threshold` and the alternative is below it.
-- **Outage trigger** — at `agent/request-error`, after the failing provider's own retry budget is spent (`llm-retry` runs first, this listener is outermost). The switch is queued for the current run's next request, so the retry leaves the failing route inside the same step.
+- **Quota trigger** — at `agent/pre-step`, when the active side's peak window reaches `threshold` and the alternative is below it. If both sides are at or above `threshold` (e.g. month exhausted), it falls back to `freeModel` (`poolside/laguna-s-2.1-free`), and automatically recovers to a primary side once quota cools down.
+- **Outage trigger** — at `agent/request-error`, after the failing provider's own retry budget is spent (`llm-retry` runs first, this listener is outermost). The switch is queued for the current run's next request, so the retry leaves the failing route inside the same step. If the alternative route is also hot or recently failed, it falls back to `freeModel`.
 - `AUTH`, `PLAN_REQUIRED`, `QUOTA`, `RATE_LIMIT`, `SERVER`, `TIMEOUT`, `TRANSPORT`, `NETWORK`, `PI_AI_ERROR`, `EMPTY_RESPONSE` and HTTP 408/429/5xx count as an unusable route. `ABORTED`, `CONTEXT_WINDOW_EXCEEDED`, and `INVALID_REQUEST` do not: they repeat identically on the other side.
-- Two guards stop the pair from trading the session: a side that failed inside `outageCooldownMs` is not a target, and a target already at `threshold` is left alone.
+- Two guards stop the pair from trading the session: a side that failed inside `outageCooldownMs` is not a target, and a target already at `threshold` is left alone (triggering free fallback instead).
 
 ## Architecture & Integration
 

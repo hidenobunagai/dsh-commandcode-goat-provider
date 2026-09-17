@@ -33,6 +33,7 @@ const USAGE_NS = 'usage-failover'
 const BADGE_TEXT_KEYS: Record<keyof UsageBadgeText, LocaleKey> = {
   go: 'usageGo',
   goat: 'usageGoat',
+  free: 'usageFree',
   window5h: 'usageWindow5h',
   windowWeek: 'usageWindowWeek',
   windowMonth: 'usageWindowMonth',

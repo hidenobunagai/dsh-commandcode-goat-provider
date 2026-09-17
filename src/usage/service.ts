@@ -19,6 +19,7 @@ import type { UsageFailoverView as SharedView } from './view.ts'
 import {
   decideFailover,
   decideOutageFailover,
+  DEFAULT_FREE_MODEL,
   FAILOVER_ROUTES,
   isUnavailableFailure,
   sideOf,
@@ -53,8 +54,8 @@ const viewSchema: zod.ZodType<UsageFailoverView> = zod.object({
   goat: snapshotSchema.nullable(),
   enabled: zod.boolean(),
   lastSwitch: zod.object({
-    from: zod.enum(['go', 'goat']),
-    to: zod.enum(['go', 'goat']),
+    from: zod.enum(['go', 'goat', 'free']),
+    to: zod.enum(['go', 'goat', 'free']),
     usagePct: zod.number(),
     at: zod.number(),
     reason: zod.enum(['usage', 'error']).optional(),
@@ -83,6 +84,10 @@ export interface UsageFailoverConfig {
   refreshIntervalMs?: number
   /** How long a failed side stays disqualified as a failover target (default 120000). */
   outageCooldownMs?: number
+  /** Whether to fallback to the free model when both primary sides are hot or failed (default true). */
+  fallbackToFree?: boolean
+  /** Model id on commandcode-goat for free fallback (default 'poolside/laguna-s-2.1-free'). */
+  freeModel?: string
 }
 
 /** Schemastery validation for the failover settings section. */
@@ -91,6 +96,8 @@ export const UsageFailoverConfigSchema: z<UsageFailoverConfig> = z.object({
   threshold: z.number().min(1).max(100).default(80),
   refreshIntervalMs: z.number().step(1).min(0).default(60000),
   outageCooldownMs: z.number().step(1).min(0).default(120000),
+  fallbackToFree: z.boolean().default(true),
+  freeModel: z.string().default(DEFAULT_FREE_MODEL),
 })
 
 const NS = 'usage-failover'
@@ -127,7 +134,7 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
     lastFetchAt: 0,
     lastSwitch: undefined,
     switching: false,
-    outageAt: { go: 0, goat: 0 },
+    outageAt: { go: 0, goat: 0, free: 0 },
   }
 
   const getConfig = (): Required<UsageFailoverConfig> => ({
@@ -135,6 +142,8 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
     threshold: current().threshold ?? 80,
     refreshIntervalMs: current().refreshIntervalMs ?? 60000,
     outageCooldownMs: current().outageCooldownMs ?? 120000,
+    fallbackToFree: current().fallbackToFree ?? true,
+    freeModel: current().freeModel ?? DEFAULT_FREE_MODEL,
   })
 
   const buildView = (): UsageFailoverView => {
@@ -321,12 +330,19 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
     { prepend: true },
   )
 
+  const targetRouteOf = (side: FailoverSide): { provider: string; model: string } => {
+    if (side === 'free') {
+      return { provider: 'commandcode-goat', model: getConfig().freeModel }
+    }
+    return FAILOVER_ROUTES[side]
+  }
+
   ctx.on(
     'agent/pre-step',
     async ({ agent, signal }, next): Promise<PreStepDecision> => {
       const decision = await next()
       if (decision.kind === 'reject' || signal.aborted) return decision
-      const { enabled, threshold } = getConfig()
+      const { enabled, threshold, fallbackToFree, freeModel } = getConfig()
       if (!enabled || live.switching) return decision
       try {
         await refresh()
@@ -334,8 +350,8 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
         return decision
       }
       const route = currentRoute(agent)
-      const active = sideOf(route.provider, route.model)
-      const outcome = decideFailover(active, { go: live.go, goat: live.goat }, threshold)
+      const active = sideOf(route.provider, route.model, freeModel)
+      const outcome = decideFailover(active, { go: live.go, goat: live.goat }, threshold, { fallbackToFree })
       if (outcome.action === 'stay') return decision
       if (outcome.action === 'hold-both-hot') {
         return {
@@ -348,7 +364,7 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
           ],
         }
       }
-      const target = FAILOVER_ROUTES[outcome.to]
+      const target = targetRouteOf(outcome.to)
       live.switching = true
       try {
         // Web: session-local switch through the same path the /model picker
@@ -357,13 +373,19 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
         const applied = await switchRoute(agent, target, route.reasoningEffort)
         if (applied === 'already-default') return decision
         live.lastSwitch = { from: active as FailoverSide, to: outcome.to, usagePct: outcome.usagePct, at: Date.now() }
+        let switchNotice: string
+        if (outcome.to === 'free') {
+          switchNotice = `usage ${fmtPct(outcome.usagePct)} ≥ ${threshold}% かつ代替側も ${fmtPct(outcome.altPct)} のため Free モデル (${target.provider}/${target.model}) に自動切替`
+        } else if (active === 'free') {
+          switchNotice = `主力側 (${target.provider}/${target.model}) の usage が回復したため自動復帰（代替側 ${fmtPct(outcome.altPct)}）`
+        } else {
+          switchNotice = `usage ${fmtPct(outcome.usagePct)} ≥ ${threshold}% のため ${target.provider}/${target.model} に自動切替（代替側 ${fmtPct(outcome.altPct)}）`
+        }
         return {
           ...decision,
           messages: [
             ...decision.messages,
-            notice(
-              `usage ${fmtPct(outcome.usagePct)} ≥ ${threshold}% のため ${target.provider}/${target.model} に自動切替（代替側 ${fmtPct(outcome.altPct)}）`,
-            ),
+            notice(switchNotice),
           ],
         }
       } catch (error) {
@@ -393,21 +415,21 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
       const decision = await next()
       // A downstream owner already scheduled a retry, or the turn was cancelled.
       if (decision?.kind === 'retry' || signal.aborted) return decision
-      const { enabled, threshold, outageCooldownMs } = getConfig()
+      const { enabled, threshold, outageCooldownMs, fallbackToFree, freeModel } = getConfig()
       if (!enabled || !isUnavailableFailure(failure)) return decision
       const route = currentRoute(agent)
-      const active = sideOf(route.provider, route.model)
+      const active = sideOf(route.provider, route.model, freeModel)
       const alt: FailoverSide | null = active === 'go' ? 'goat' : active === 'goat' ? 'go' : null
       const outcome = decideOutageFailover(active, {
-        recentlyFailed: alt === null ? false : Date.now() - live.outageAt[alt] < outageCooldownMs,
+        recentlyFailed: alt === null ? false : Date.now() - (live.outageAt[alt] ?? 0) < outageCooldownMs,
         // Quota is a hint here, not a gate: a stale snapshot must never keep the
         // session on a route that is refusing requests.
         usagePct: alt !== null && live[alt] ? maxPercent(live[alt]) : null,
-      }, threshold)
+      }, threshold, { fallbackToFree })
       if (outcome.action === 'stay' || active === null) return decision
 
-      const from = FAILOVER_ROUTES[active]
-      const target = FAILOVER_ROUTES[outcome.to]
+      const from = targetRouteOf(active)
+      const target = targetRouteOf(outcome.to)
       const detail = failure.status === undefined ? failure.code : `${failure.code} (${failure.status})`
       if (outcome.action === 'hold') {
         agent.inject(notice(
@@ -432,14 +454,15 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
       live.lastSwitch = {
         from: active,
         to: outcome.to,
-        usagePct: live[active] ? maxPercent(live[active]) : 0,
+        usagePct: active !== 'free' && live[active] ? maxPercent(live[active]!) : 0,
         at: Date.now(),
         reason: 'error',
         detail,
       }
-      agent.inject(notice(
-        `${from.provider}/${from.model} が ${detail} で失敗したため ${target.provider}/${target.model} に自動切替`,
-      ))
+      const outageNotice = outcome.to === 'free'
+        ? `${from.provider}/${from.model} が ${detail} で失敗し代替側も利用不可のため Free モデル (${target.provider}/${target.model}) に自動切替`
+        : `${from.provider}/${from.model} が ${detail} で失敗したため ${target.provider}/${target.model} に自動切替`
+      agent.inject(notice(outageNotice))
       return { kind: 'retry' }
     },
     { prepend: true },

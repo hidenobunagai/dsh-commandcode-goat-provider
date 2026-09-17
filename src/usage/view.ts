@@ -26,8 +26,8 @@ export interface UsageFailoverView {
   goat: UsageSideView | null
   enabled: boolean
   lastSwitch?: {
-    from: 'go' | 'goat'
-    to: 'go' | 'goat'
+    from: 'go' | 'goat' | 'free'
+    to: 'go' | 'goat' | 'free'
     usagePct: number
     at: number
     /** What fired the switch; absent means a quota switch. */
