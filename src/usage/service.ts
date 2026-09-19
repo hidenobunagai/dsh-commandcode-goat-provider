@@ -101,7 +101,7 @@ export const UsageFailoverConfigSchema: z<UsageFailoverConfig> = z.object({
   freeThreshold: z.number().min(1).max(100).default(90),
   refreshIntervalMs: z.number().step(1).min(0).default(60000),
   outageCooldownMs: z.number().step(1).min(0).default(120000),
-  fallbackToFree: z.boolean().default(true),
+  fallbackToFree: z.boolean().default(false),
   freeModel: z.string().default(DEFAULT_FREE_MODEL),
 })
 
@@ -148,7 +148,7 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
     freeThreshold: current().freeThreshold ?? 90,
     refreshIntervalMs: current().refreshIntervalMs ?? 60000,
     outageCooldownMs: current().outageCooldownMs ?? 120000,
-    fallbackToFree: current().fallbackToFree ?? true,
+    fallbackToFree: current().fallbackToFree ?? false,
     freeModel: current().freeModel ?? DEFAULT_FREE_MODEL,
   })
 

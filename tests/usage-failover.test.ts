@@ -38,13 +38,13 @@ describe('usage failover decision', () => {
     const r = decideFailover('goat', { go: snap(85, 10, 10), goat: snap(95, 10, 10) }, 80)
     expect(r).toMatchObject({ action: 'switch', to: 'go' })
   })
-  it('switches to free when both sides are hot and >= freeThreshold (90%)', () => {
+  it('holds by default when both sides are hot (fallbackToFree defaults to false)', () => {
     const r = decideFailover('goat', { go: snap(90, 90, 90), goat: snap(92, 10, 10) }, 80)
-    expect(r).toMatchObject({ action: 'switch', to: 'free' })
-  })
-  it('holds when both sides are hot and fallbackToFree is disabled', () => {
-    const r = decideFailover('goat', { go: snap(90, 90, 90), goat: snap(92, 10, 10) }, 80, { fallbackToFree: false })
     expect(r.action).toBe('hold-both-hot')
+  })
+  it('switches to free when both sides are hot and fallbackToFree is enabled', () => {
+    const r = decideFailover('goat', { go: snap(90, 90, 90), goat: snap(92, 10, 10) }, 80, { fallbackToFree: true })
+    expect(r).toMatchObject({ action: 'switch', to: 'free' })
   })
   it('recovers from free when a primary side cools down below freeThreshold', () => {
     expect(decideFailover('free', { go: snap(50, 50, 50), goat: snap(90, 90, 90) }, 80)).toMatchObject({ action: 'switch', to: 'go' })
@@ -82,20 +82,22 @@ describe('outage failover decision', () => {
     expect(isUnavailableFailure({ code: 'ABORTED' })).toBe(false)
     expect(isUnavailableFailure({ code: 'CONTEXT_WINDOW_EXCEEDED' })).toBe(false)
   })
-  it('switches only to a healthy alternative or falls back to free', () => {
+  it('switches only to a healthy alternative or falls back to free when enabled', () => {
     expect(decideOutageFailover('go', { recentlyFailed: false, usagePct: 5 }, 80))
       .toEqual({ action: 'switch', to: 'goat' })
     expect(decideOutageFailover('goat', { recentlyFailed: false, usagePct: null }, 80))
       .toEqual({ action: 'switch', to: 'go' })
-    expect(decideOutageFailover('go', { recentlyFailed: true, usagePct: 5 }, 80))
+    // With fallbackToFree: true
+    expect(decideOutageFailover('go', { recentlyFailed: true, usagePct: 5 }, 80, { fallbackToFree: true }))
       .toEqual({ action: 'switch', to: 'free' })
-    expect(decideOutageFailover('go', { recentlyFailed: false, usagePct: 80 }, 80))
+    expect(decideOutageFailover('go', { recentlyFailed: false, usagePct: 80 }, 80, { fallbackToFree: true }))
       .toEqual({ action: 'switch', to: 'goat' })
-    expect(decideOutageFailover('go', { recentlyFailed: false, usagePct: 90 }, 80))
+    expect(decideOutageFailover('go', { recentlyFailed: false, usagePct: 90 }, 80, { fallbackToFree: true }))
       .toEqual({ action: 'switch', to: 'free' })
-    expect(decideOutageFailover('go', { recentlyFailed: true, usagePct: 5 }, 80, { fallbackToFree: false }))
+    // Defaults (fallbackToFree: false) hold instead of falling back to free
+    expect(decideOutageFailover('go', { recentlyFailed: true, usagePct: 5 }, 80))
       .toMatchObject({ action: 'hold', to: 'goat', reason: 'alt-recently-failed' })
-    expect(decideOutageFailover('go', { recentlyFailed: false, usagePct: 80 }, 80, { fallbackToFree: false }))
+    expect(decideOutageFailover('go', { recentlyFailed: false, usagePct: 80 }, 80))
       .toMatchObject({ action: 'hold', to: 'goat', reason: 'alt-hot' })
     expect(decideOutageFailover(null, { recentlyFailed: false, usagePct: null }, 80).action).toBe('stay')
   })
@@ -107,7 +109,7 @@ describe('usage-failover settings section', () => {
   // than turning the guard off.
   it('defaults the automation on when only `enabled` is configured', () => {
     const resolved = UsageFailoverConfigSchema({ enabled: true })
-    expect(resolved).toMatchObject({ enabled: true, threshold: 80, freeThreshold: 90, refreshIntervalMs: 60000 })
+    expect(resolved).toMatchObject({ enabled: true, threshold: 80, freeThreshold: 90, refreshIntervalMs: 60000, fallbackToFree: false })
   })
   it('carries an explicit opt-out through', () => {
     expect(UsageFailoverConfigSchema({ enabled: false })).toMatchObject({ enabled: false })
@@ -349,10 +351,10 @@ describe('usage-failover switch sink', () => {
     expect(noticeTexts(decision)).toContain(`${GOAT.provider}/${GOAT.model} に自動切替`)
   })
 
-  it('switches to free model when both sides are hot', async () => {
+  it('switches to free model when both sides are hot and fallbackToFree is enabled', async () => {
     delete process.env.OPENCODE_GO_API_KEY
     delete process.env.COMMANDCODE_API_KEY
-    const h = boot({ goPercent: 90, goatPercent: 90 })
+    const h = boot({ goPercent: 90, goatPercent: 90, fallbackToFree: true })
     const decision = await h.preStep()
     expect(h.saved).toEqual([{ provider: 'commandcode-goat', model: 'poolside/laguna-s-2.1-free' }])
     expect(await h.request(GO)).toMatchObject({ provider: 'commandcode-goat', model: 'poolside/laguna-s-2.1-free' })
@@ -362,7 +364,7 @@ describe('usage-failover switch sink', () => {
   it('drops reasoningEffort when switching to free model on pre-step', async () => {
     delete process.env.OPENCODE_GO_API_KEY
     delete process.env.COMMANDCODE_API_KEY
-    const h = boot({ goPercent: 90, goatPercent: 90 })
+    const h = boot({ goPercent: 90, goatPercent: 90, fallbackToFree: true })
     await h.preStep({ ...GO, reasoningEffort: 'max' })
     expect(h.saved).toEqual([{ provider: 'commandcode-goat', model: 'poolside/laguna-s-2.1-free' }])
     expect(h.saved[0]).not.toHaveProperty('reasoningEffort')
@@ -376,10 +378,10 @@ describe('usage-failover switch sink', () => {
     expect(h.saved).toEqual([{ provider: GOAT.provider, model: GOAT.model, reasoningEffort: 'max' }])
   })
 
-  it('stays put when both sides are hot and fallbackToFree is disabled', async () => {
+  it('stays put by default when both sides are hot (fallbackToFree defaults to false)', async () => {
     delete process.env.OPENCODE_GO_API_KEY
     delete process.env.COMMANDCODE_API_KEY
-    const h = boot({ goPercent: 90, goatPercent: 90, fallbackToFree: false })
+    const h = boot({ goPercent: 90, goatPercent: 90 })
     const decision = await h.preStep()
     expect(h.saved).toHaveLength(0)
     expect(await h.request(GO)).toMatchObject({ provider: GO.provider, model: GO.model })
@@ -487,7 +489,7 @@ describe('usage-failover outage recovery', () => {
   it('falls back to free when both sides fail with an outage', async () => {
     delete process.env.OPENCODE_GO_API_KEY
     delete process.env.COMMANDCODE_API_KEY
-    const h = boot({ goPercent: 5, goatPercent: 5 })
+    const h = boot({ goPercent: 5, goatPercent: 5, fallbackToFree: true })
     await h.requestError(GO, { code: 'TIMEOUT' })
     const back = await h.requestError(GOAT, { code: 'TIMEOUT' })
 
@@ -499,10 +501,10 @@ describe('usage-failover outage recovery', () => {
     expect(messageTexts(h.injected)).toContain('Free モデル')
   })
 
-  it('falls back to free when the alternative is over quota', async () => {
+  it('falls back to free when the alternative is over quota and fallbackToFree is enabled', async () => {
     delete process.env.OPENCODE_GO_API_KEY
     delete process.env.COMMANDCODE_API_KEY
-    const h = boot({ goPercent: 5, goatPercent: 95 })
+    const h = boot({ goPercent: 5, goatPercent: 95, fallbackToFree: true })
     await h.preStep(GO)
     const action = await h.requestError(GO, { code: 'SERVER', status: 503 })
 
@@ -514,7 +516,7 @@ describe('usage-failover outage recovery', () => {
   it('drops reasoningEffort when falling back to free model on outage', async () => {
     delete process.env.OPENCODE_GO_API_KEY
     delete process.env.COMMANDCODE_API_KEY
-    const h = boot({ goPercent: 5, goatPercent: 95 })
+    const h = boot({ goPercent: 5, goatPercent: 95, fallbackToFree: true })
     await h.preStep({ ...GO, reasoningEffort: 'max' })
     const action = await h.requestError({ ...GO, reasoningEffort: 'max' }, { code: 'SERVER', status: 503 })
 
@@ -535,10 +537,10 @@ describe('usage-failover outage recovery', () => {
   })
 
 
-  it('keeps the session put when alternative is over quota and fallbackToFree is disabled', async () => {
+  it('keeps the session put by default when alternative is over quota (fallbackToFree defaults to false)', async () => {
     delete process.env.OPENCODE_GO_API_KEY
     delete process.env.COMMANDCODE_API_KEY
-    const h = boot({ goPercent: 5, goatPercent: 95, fallbackToFree: false })
+    const h = boot({ goPercent: 5, goatPercent: 95 })
     await h.preStep(GO)
     const action = await h.requestError(GO, { code: 'SERVER', status: 503 })
 

@@ -20,7 +20,7 @@ export interface UsagePair {
 
 /** Options for failover decision. */
 export interface FailoverOpts {
-  /** Whether to fallback to the free model when both sides are hot (default true). */
+  /** Whether to fallback to the free model when both sides are hot (default false). */
   fallbackToFree?: boolean
   /** Usage percent that triggers fallback to free model (default 90). */
   freeThreshold?: number
@@ -47,7 +47,7 @@ export function decideFailover(
   opts: FailoverOpts = {},
 ): FailoverOutcome {
   if (active === null) return { action: 'stay', reason: 'not-on-pair' }
-  const fallbackToFree = opts.fallbackToFree ?? true
+  const fallbackToFree = opts.fallbackToFree ?? false
   const freeThreshold = opts.freeThreshold ?? 90
 
   if (active === 'free') {
@@ -85,17 +85,14 @@ export function decideFailover(
   }
 
   // Both sides are >= threshold (e.g. >= 80%).
-  if (fallbackToFree) {
-    // If both are >= freeThreshold (e.g. >= 90%) -> switch to free
-    if (usagePct >= freeThreshold && altPct >= freeThreshold) {
-      return { action: 'switch', to: 'free', usagePct, altPct }
-    }
-    // If active is exhausted (>= freeThreshold) but alt is still below freeThreshold -> switch to alt!
-    if (usagePct >= freeThreshold && altPct < freeThreshold) {
-      return { action: 'switch', to: altSide, usagePct, altPct }
-    }
-    // If active is below freeThreshold (e.g. 85%), keep using active side
-    return { action: 'hold-both-hot', usagePct, altPct }
+  // If active is exhausted (>= freeThreshold) but alt is still below freeThreshold -> switch to alt!
+  if (usagePct >= freeThreshold && altPct < freeThreshold) {
+    return { action: 'switch', to: altSide, usagePct, altPct }
+  }
+
+  // If both are >= freeThreshold (e.g. >= 90%) and fallbackToFree is enabled -> switch to free
+  if (fallbackToFree && usagePct >= freeThreshold && altPct >= freeThreshold) {
+    return { action: 'switch', to: 'free', usagePct, altPct }
   }
 
   return { action: 'hold-both-hot', usagePct, altPct }
@@ -158,7 +155,7 @@ export function decideOutageFailover(
   opts: FailoverOpts = {},
 ): OutageOutcome {
   if (active === null) return { action: 'stay', reason: 'not-on-pair' }
-  const fallbackToFree = opts.fallbackToFree ?? true
+  const fallbackToFree = opts.fallbackToFree ?? false
   const freeThreshold = opts.freeThreshold ?? 90
 
   if (active === 'free') {
