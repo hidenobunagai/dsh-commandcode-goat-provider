@@ -61,6 +61,7 @@ export const CATALOG: readonly CatalogEntry[] = [
   { id: 'stepfun/Step-3.7-Flash', name: 'Step 3.7 Flash', contextWindow: 256000, maxTokens: 65536, protocol: 'openai', modalities: ['text', 'image'], tier: 'go', label: 'Go/GOAT', intelligence: 30.9, inputPrice: 0.20, outputPrice: 1.15, latest: true },
   { id: 'tencent/hy4-preview', name: 'Tencent Hy4 Preview', contextWindow: 1048576, maxTokens: 65536, protocol: 'openai', modalities: ['text'], tier: 'go', label: 'Go/GOAT', inputPrice: 0.834, outputPrice: 2.501, latest: true },
   { id: 'xiaomi/mimo-v2.5-pro', name: 'MiMo V2.5 Pro', contextWindow: 1000000, maxTokens: 65536, protocol: 'openai', modalities: ['text'], tier: 'go', label: 'Go/GOAT', intelligence: 42.9, inputPrice: 0.435, outputPrice: 0.87, discount: '-99%', latest: true },
+  { id: 'meituan/LongCat-2.0', name: 'LongCat 2.0', contextWindow: 1048576, maxTokens: 65536, protocol: 'openai', modalities: ['text'], tier: 'go', label: 'Go/GOAT', intelligence: 19.7, inputPrice: 0.30, outputPrice: 1.20, latest: true },
 
   // ── Extra known models (pricing / capabilities without "latest" flag) ──
   { id: 'Qwen/Qwen3.7-Flash', name: 'Qwen 3.7 Flash', contextWindow: 1000000, maxTokens: 65536, protocol: 'openai', modalities: ['text', 'image'], tier: 'go', label: 'Go/GOAT', inputPrice: 0.03, outputPrice: 0.13 },
@@ -86,7 +87,6 @@ export const CATALOG: readonly CatalogEntry[] = [
   { id: 'deepseek/deepseek-v4-flash-vision-exp', name: 'DeepSeek V4 Flash Vision (exp)', contextWindow: 1000000, maxTokens: 65536, protocol: 'openai', modalities: ['text', 'image'], efforts: ['high', 'max'], defaultEffort: 'high', tier: 'go', label: 'Go/GOAT', inputPrice: 0.22, outputPrice: 0.66 },
 
   // ── Free tier extras ───────────────────────────────────────────────
-  { id: 'meituan/LongCat-2.0:free', name: 'LongCat 2.0', contextWindow: 1048576, maxTokens: 65536, protocol: 'openai', modalities: ['text'], tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free', latest: true },
   { id: 'inclusionai/ling-3.0-flash-sante:free', name: 'Ling 3.0 Flash Sante', contextWindow: 262144, maxTokens: 65536, protocol: 'openai', modalities: ['text'], tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free', latest: true },
   { id: 'poolside/laguna-s-2.1-free', name: 'Laguna S 2.1', contextWindow: 256000, maxTokens: 32768, protocol: 'openai', modalities: ['text'], tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free' },
 
