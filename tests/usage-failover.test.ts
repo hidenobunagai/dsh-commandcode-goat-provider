@@ -155,14 +155,14 @@ interface RequestRoute {
 
 interface Harness {
   ctx: Context
-  saved: { provider: string; model: string }[]
+  saved: { provider: string; model: string; reasoningEffort?: string }[]
   selected: Record<string, unknown>[]
   calls: { url: string; authorization: string | undefined }[]
   injected: unknown[]
-  preStep: (route?: { provider: string; model: string }) => Promise<{ messages: unknown[] }>
+  preStep: (route?: { provider: string; model: string; reasoningEffort?: string }) => Promise<{ messages: unknown[] }>
   request: (route?: RequestRoute) => Promise<RequestRoute>
   requestError: (
-    route: { provider: string; model: string },
+    route: { provider: string; model: string; reasoningEffort?: string },
     failure: { code: string; status?: number },
     next?: () => Promise<{ kind: 'retry' } | undefined>,
   ) => Promise<{ kind: 'retry' } | undefined>
@@ -190,7 +190,7 @@ function boot(opts: {
   freeModel?: string
 }): Harness {
   const calls = stubUsageEndpoints(opts.goPercent, opts.goatPercent)
-  const saved: { provider: string; model: string }[] = []
+  const saved: { provider: string; model: string; reasoningEffort?: string }[] = []
   const selected: Record<string, unknown>[] = []
   let selection = opts.defaultSelection ?? GO
   const ctx = new Context()
@@ -212,7 +212,7 @@ function boot(opts: {
   if (opts.defaultModel !== false) {
     ctx.provide('agentDefaultModel', {
       currentSelection: () => ({ ...selection }),
-      saveSelection: async (next: { provider: string; model: string }) => {
+      saveSelection: async (next: { provider: string; model: string; reasoningEffort?: string }) => {
         saved.push(next)
         selection = next
       },
@@ -240,13 +240,13 @@ function boot(opts: {
     installModelSelection(ctx, { current: { ...selection }, assembled: { ...selection } })
   }
 
-  let header: { provider: string; model: string } = GO
+  let header: { provider: string; model: string; reasoningEffort?: string } = GO
   const injected: unknown[] = []
   const agent = {
     session: { id: 'session-under-test', requestHeader: () => ({ config: header }) },
     inject: (message: unknown) => { injected.push(message) },
   } as unknown as Agent
-  const preStep = async (route: { provider: string; model: string } = GO) => {
+  const preStep = async (route: { provider: string; model: string; reasoningEffort?: string } = GO) => {
     header = route
     return ctx.waterfall(
       'agent/pre-step',
@@ -261,7 +261,7 @@ function boot(opts: {
       () => Promise.resolve(route),
     ) as Promise<RequestRoute>
   const requestError = (
-    route: { provider: string; model: string },
+    route: { provider: string; model: string; reasoningEffort?: string },
     failure: { code: string; status?: number },
     next: () => Promise<{ kind: 'retry' } | undefined> = () => Promise.resolve(undefined),
   ) => {
@@ -357,6 +357,23 @@ describe('usage-failover switch sink', () => {
     expect(h.saved).toEqual([{ provider: 'commandcode-goat', model: 'poolside/laguna-s-2.1-free' }])
     expect(await h.request(GO)).toMatchObject({ provider: 'commandcode-goat', model: 'poolside/laguna-s-2.1-free' })
     expect(noticeTexts(decision)).toContain('Free モデル')
+  })
+
+  it('drops reasoningEffort when switching to free model on pre-step', async () => {
+    delete process.env.OPENCODE_GO_API_KEY
+    delete process.env.COMMANDCODE_API_KEY
+    const h = boot({ goPercent: 90, goatPercent: 90 })
+    await h.preStep({ ...GO, reasoningEffort: 'max' })
+    expect(h.saved).toEqual([{ provider: 'commandcode-goat', model: 'poolside/laguna-s-2.1-free' }])
+    expect(h.saved[0]).not.toHaveProperty('reasoningEffort')
+  })
+
+  it('retains reasoningEffort when switching to effort-capable model (go -> goat)', async () => {
+    delete process.env.OPENCODE_GO_API_KEY
+    delete process.env.COMMANDCODE_API_KEY
+    const h = boot({ goPercent: 90, goatPercent: 5 })
+    await h.preStep({ ...GO, reasoningEffort: 'max' })
+    expect(h.saved).toEqual([{ provider: GOAT.provider, model: GOAT.model, reasoningEffort: 'max' }])
   })
 
   it('stays put when both sides are hot and fallbackToFree is disabled', async () => {
@@ -493,6 +510,30 @@ describe('usage-failover outage recovery', () => {
     expect(h.saved).toEqual([{ provider: 'commandcode-goat', model: 'poolside/laguna-s-2.1-free' }])
     expect(messageTexts(h.injected)).toContain('Free モデル')
   })
+
+  it('drops reasoningEffort when falling back to free model on outage', async () => {
+    delete process.env.OPENCODE_GO_API_KEY
+    delete process.env.COMMANDCODE_API_KEY
+    const h = boot({ goPercent: 5, goatPercent: 95 })
+    await h.preStep({ ...GO, reasoningEffort: 'max' })
+    const action = await h.requestError({ ...GO, reasoningEffort: 'max' }, { code: 'SERVER', status: 503 })
+
+    expect(action).toEqual({ kind: 'retry' })
+    expect(h.saved).toEqual([{ provider: 'commandcode-goat', model: 'poolside/laguna-s-2.1-free' }])
+    expect(h.saved[0]).not.toHaveProperty('reasoningEffort')
+  })
+
+  it('retains reasoningEffort when failing over between effort-capable models on outage', async () => {
+    delete process.env.OPENCODE_GO_API_KEY
+    delete process.env.COMMANDCODE_API_KEY
+    const h = boot({ goPercent: 5, goatPercent: 5 })
+    await h.preStep({ ...GO, reasoningEffort: 'max' })
+    const action = await h.requestError({ ...GO, reasoningEffort: 'max' }, { code: 'SERVER', status: 503 })
+
+    expect(action).toEqual({ kind: 'retry' })
+    expect(h.saved).toEqual([{ provider: GOAT.provider, model: GOAT.model, reasoningEffort: 'max' }])
+  })
+
 
   it('keeps the session put when alternative is over quota and fallbackToFree is disabled', async () => {
     delete process.env.OPENCODE_GO_API_KEY

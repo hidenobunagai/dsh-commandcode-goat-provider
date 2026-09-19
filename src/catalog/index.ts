@@ -7,7 +7,9 @@ import type {
 import type { ReasoningEffortId as ReasoningEffortIdType } from '@deepseek-ai/dsh-llm'
 import type { CommandCodeConfig, CommandCodeStaticModel, Protocol, ProtocolOverride } from '../types.ts'
 import { DEFAULT_CONTEXT_WINDOW, DEFAULT_MAX_TOKENS } from '../config.ts'
-import { CATALOG, toStaticModel } from './data.ts'
+import { CATALOG, modelSupportsEffort, toStaticModel } from './data.ts'
+
+export { CATALOG, modelSupportsEffort, toStaticModel }
 
 // ponytail: local identity keeps client bundle free of @deepseek-ai/dsh-llm runtime require
 const ReasoningEffortId = (id: string): ReasoningEffortIdType => id as ReasoningEffortIdType

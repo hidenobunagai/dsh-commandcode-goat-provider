@@ -130,3 +130,25 @@ export function toStaticModel(entry: CatalogEntry): CommandCodeStaticModel {
     supportsTools: entry.supportsTools ?? true,
   }
 }
+
+/**
+ * Whether the given target model supports reasoning effort.
+ * Free tier models declare no efforts, while Go/GOAT models typically declare high/max or low..max.
+ * External providers (e.g. opencode-go-v41) return true so the existing effort is retained.
+ */
+export function modelSupportsEffort(target: { provider?: string; model: string } | string): boolean {
+  const modelId = typeof target === 'string' ? target : target.model
+  const provider = typeof target === 'string' ? undefined : target.provider
+
+  if (provider && provider !== 'commandcode-goat') {
+    return true
+  }
+
+  const entry = CATALOG.find((e) => e.id === modelId)
+  if (!entry) {
+    if (modelId.endsWith(':free') || modelId.endsWith('-free')) return false
+    return true
+  }
+  return Boolean(entry.efforts && entry.efforts.length > 0)
+}
+

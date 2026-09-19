@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { defaultConfig } from '../src/config.ts'
 import {
   FALLBACK_MODELS,
+  modelSupportsEffort,
   normalizeDiscoveredModels,
   resolveCommandCodeModel,
   resolveModelProtocol,
 } from '../src/catalog/index.ts'
+
 
 describe('catalog', () => {
   it('normalizes discovered models and ignores unknown fields', () => {
@@ -68,4 +70,28 @@ describe('catalog', () => {
     expect(FALLBACK_MODELS.some((m: { id: string }) => m.id === 'gpt-5.6-luna')).toBe(true)
     expect(FALLBACK_MODELS.some((m: { id: string }) => m.id === 'claude-sonnet-4-6')).toBe(true)
   })
+
+  it('checks reasoning effort capability via modelSupportsEffort', () => {
+    // Free tier models do not support reasoning effort
+    expect(modelSupportsEffort('poolside/laguna-s-2.1-free')).toBe(false)
+    expect(modelSupportsEffort({ provider: 'commandcode-goat', model: 'poolside/laguna-s-2.1-free' })).toBe(false)
+    expect(modelSupportsEffort('meituan/LongCat-2.0:free')).toBe(false)
+    expect(modelSupportsEffort('inclusionai/ling-3.0-flash-sante:free')).toBe(false)
+
+    // Known effort-capable models
+    expect(modelSupportsEffort('deepseek/deepseek-v4.1-flash')).toBe(true)
+    expect(modelSupportsEffort({ provider: 'commandcode-goat', model: 'deepseek/deepseek-v4.1-flash' })).toBe(true)
+    expect(modelSupportsEffort('gpt-5.6-luna')).toBe(true)
+
+    // Known models without efforts
+    expect(modelSupportsEffort('moonshotai/Kimi-K3')).toBe(false)
+
+    // External providers retain effort
+    expect(modelSupportsEffort({ provider: 'opencode-go-v41', model: 'deepseek-flash' })).toBe(true)
+
+    // Unknown models ending in :free or -free
+    expect(modelSupportsEffort({ provider: 'commandcode-goat', model: 'custom/model:free' })).toBe(false)
+    expect(modelSupportsEffort('unknown-free')).toBe(false)
+  })
 })
+

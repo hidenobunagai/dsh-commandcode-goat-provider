@@ -25,6 +25,8 @@ import {
   sideOf,
   type FailoverSide,
 } from './failover.ts'
+import { modelSupportsEffort } from '../catalog/data.ts'
+
 
 /** Cordis plugin name used by loader diagnostics. */
 export const usageServiceName = 'usage-failover'
@@ -377,7 +379,8 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
         // Web: session-local switch through the same path the /model picker
         // uses. Headless: the saved default plus a queued override, so this run
         // leaves the hot route at its next request and the next Agent starts there.
-        const applied = await switchRoute(agent, target, route.reasoningEffort)
+        const targetEffort = modelSupportsEffort(target) ? route.reasoningEffort : undefined
+        const applied = await switchRoute(agent, target, targetEffort)
         if (applied === 'already-default') return decision
         live.lastSwitch = { from: active as FailoverSide, to: outcome.to, usagePct: outcome.usagePct, at: Date.now() }
         let switchNotice: string
@@ -447,10 +450,11 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
 
       // The retry happens inside this step, where the session's own selection may
       // not be re-read, so the queued route is what actually moves the request.
-      inflight.set(agent, routeTo(target, route.reasoningEffort))
+      const targetEffort = modelSupportsEffort(target) ? route.reasoningEffort : undefined
+      inflight.set(agent, routeTo(target, targetEffort))
       live.outageAt[active] = Date.now()
       try {
-        await switchRoute(agent, target, route.reasoningEffort)
+        await switchRoute(agent, target, targetEffort)
       } catch (error) {
         // The queued route still moves this Agent's next request; only the
         // durable switch failed, and that must reach the operator.
