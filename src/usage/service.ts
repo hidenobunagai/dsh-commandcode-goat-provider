@@ -348,13 +348,15 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
     async ({ agent, signal }, next): Promise<PreStepDecision> => {
       const decision = await next()
       if (decision.kind === 'reject' || signal.aborted) return decision
-      const { enabled, threshold, freeThreshold, fallbackToFree, freeModel } = getConfig()
-      if (!enabled || live.switching) return decision
       try {
+        // Refresh even when the automation is off: the Usage card reads these
+        // snapshots and must stay live while switching is delegated to jev-router.
         await refresh()
       } catch {
         return decision
       }
+      const { enabled, threshold, freeThreshold, fallbackToFree, freeModel } = getConfig()
+      if (!enabled || live.switching) return decision
       const route = currentRoute(agent)
       const active = sideOf(route.provider, route.model, freeModel)
       const outcome = decideFailover(active, { go: live.go, goat: live.goat }, threshold, {
