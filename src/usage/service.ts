@@ -15,6 +15,16 @@ import { createUserMessage, type ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-session-projection/types'
 import { fetchGoUsage, fetchGoatUsage, maxPercent, type UsageSnapshot } from './fetch.ts'
+import { join } from 'node:path'
+import {
+  DEFAULT_CANDIDATES,
+  appendRouterLog,
+  classifyTask,
+  latestUserPrompt,
+  pickRoute,
+  requiredCapability,
+  resolveApiKey,
+} from './jev-router.ts'
 import type { UsageFailoverView as SharedView } from './view.ts'
 import {
   decideFailover,
@@ -92,6 +102,19 @@ export interface UsageFailoverConfig {
   fallbackToFree?: boolean
   /** Model id on commandcode-goat for free fallback (default 'poolside/laguna-s-2.1-free'). */
   freeModel?: string
+  /** jev-router: task-difficulty model selection on top of the quota axis (default off). */
+  jevRouter?: {
+    /** 'off' | 'dry-run'（記録のみ・切替なし） | 'live'（実際に切替）。 */
+    mode?: 'off' | 'dry-run' | 'live'
+    /** Env var holding the Typesafe API key (default TYPESAFE_API_KEY; dotenvx store as fallback). */
+    apiKeyEnv?: string
+    /** Minimum ms between router-initiated switches (default 600000). */
+    stickyMs?: number
+    /** Head size of the latest user prompt sent to the judge (default 1600). */
+    promptHeadChars?: number
+    /** User-preselected candidate ladder; empty = DEFAULT_CANDIDATES (heavy/normal/light). */
+    candidates?: { provider: string; model: string; tier: 'light' | 'normal' | 'heavy' }[]
+  }
 }
 
 /** Schemastery validation for the failover settings section. */
@@ -103,6 +126,19 @@ export const UsageFailoverConfigSchema: z<UsageFailoverConfig> = z.object({
   outageCooldownMs: z.number().step(1).min(0).default(120000),
   fallbackToFree: z.boolean().default(false),
   freeModel: z.string().default(DEFAULT_FREE_MODEL),
+  jevRouter: z.object({
+    mode: z.union(['off', 'dry-run', 'live']).default('off'),
+    apiKeyEnv: z.string().default('TYPESAFE_API_KEY'),
+    stickyMs: z.number().step(1).min(0).default(600000),
+    promptHeadChars: z.number().step(1).min(200).default(1600),
+    candidates: z.array(
+      z.object({
+        provider: z.string(),
+        model: z.string(),
+        tier: z.union(['light', 'normal', 'heavy']),
+      }),
+    ).default([]),
+  }).default({ mode: 'off', apiKeyEnv: 'TYPESAFE_API_KEY', stickyMs: 600000, promptHeadChars: 1600, candidates: [] }),
 })
 
 const NS = 'usage-failover'
@@ -150,6 +186,13 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
     outageCooldownMs: current().outageCooldownMs ?? 120000,
     fallbackToFree: current().fallbackToFree ?? false,
     freeModel: current().freeModel ?? DEFAULT_FREE_MODEL,
+    jevRouter: {
+      mode: current().jevRouter?.mode ?? 'off',
+      apiKeyEnv: current().jevRouter?.apiKeyEnv ?? 'TYPESAFE_API_KEY',
+      stickyMs: current().jevRouter?.stickyMs ?? 600000,
+      promptHeadChars: current().jevRouter?.promptHeadChars ?? 1600,
+      candidates: current().jevRouter?.candidates ?? [],
+    },
   })
 
   const buildView = (): UsageFailoverView => {
@@ -343,6 +386,74 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
     return FAILOVER_ROUTES[side]
   }
 
+  // ── jev-router: 難度軸のモデル選択（quota 軸が stay のときだけ動く。dry-run は記録のみ） ──
+  let jevKey: string | null | undefined
+  let jevCache: { hash: string; verdict: { difficulty: number; risk: number; confidence: number } } | null = null
+  let jevLastSwitchAt = 0
+
+  const maybeJevRoute = async (
+    agent: Agent,
+    decision: PreStepDecision,
+    route: { provider: string; model: string; reasoningEffort?: string },
+    threshold: number,
+  ): Promise<PreStepDecision> => {
+    try {
+      const cfg = getConfig().jevRouter
+      if (cfg.mode === 'off' || live.switching || decision.kind !== 'enter') return decision
+      const prompt = latestUserPrompt((agent as unknown as { session?: unknown }).session, cfg.promptHeadChars ?? 1600)
+      if (!prompt) return decision
+      const hash = `${prompt.length}:${prompt.slice(-64)}`
+      if (jevCache?.hash === hash || Date.now() - jevLastSwitchAt < (cfg.stickyMs ?? 600000)) return decision
+      jevKey ??= resolveApiKey(cfg.apiKeyEnv ?? 'TYPESAFE_API_KEY')
+      if (!jevKey) {
+        ctx.logger.warn('usage-failover: jev-router enabled but no Typesafe API key resolved')
+        return decision
+      }
+      const verdict = await classifyTask(jevKey, prompt)
+      if (!verdict) return decision
+      jevCache = { hash, verdict }
+      const requiredCap = requiredCapability(verdict.difficulty, verdict.risk)
+      const outcome = pickRoute({
+        candidates: cfg.candidates?.length ? cfg.candidates : DEFAULT_CANDIDATES,
+        quotaPct: {
+          go: live.go ? maxPercent(live.go) : Number.POSITIVE_INFINITY,
+          goat: live.goat ? maxPercent(live.goat) : Number.POSITIVE_INFINITY,
+        },
+        threshold,
+        requiredCap,
+        current: route,
+        freeModel: getConfig().freeModel,
+      })
+      appendRouterLog(
+        join(process.env.HOME ?? '~', '.dsh', 'jev-router.log'),
+        `mode=${cfg.mode} difficulty=${verdict.difficulty.toFixed(2)} risk=${verdict.risk.toFixed(2)} conf=${verdict.confidence.toFixed(2)} action=${outcome.action} ${outcome.to ? `to=${outcome.to.provider}/${outcome.to.model}` : ''} reason=${outcome.reason} task="${prompt.slice(0, 60).replace(/\s+/g, ' ')}"`,
+      )
+      if (outcome.action !== 'switch' || !outcome.to || cfg.mode !== 'live') return decision
+      const target = { provider: outcome.to.provider, model: outcome.to.model }
+      live.switching = true
+      jevLastSwitchAt = Date.now()
+      try {
+        const targetEffort = modelSupportsEffort(target) ? route.reasoningEffort : undefined
+        const applied = await switchRoute(agent, target, targetEffort)
+        if (applied === 'already-default') return decision
+        return {
+          ...decision,
+          messages: [
+            ...decision.messages,
+            notice(
+              `jev-router: 難度 ${verdict.difficulty.toFixed(2)}・リスク ${verdict.risk.toFixed(2)} → ${target.provider}/${target.model} へ切替（${outcome.reason}）`,
+            ),
+          ],
+        }
+      } finally {
+        live.switching = false
+      }
+    } catch (error) {
+      ctx.logger.warn(`usage-failover: jev-router error; ignoring: ${String(error)}`)
+      return decision
+    }
+  }
+
   ctx.on(
     'agent/pre-step',
     async ({ agent, signal }, next): Promise<PreStepDecision> => {
@@ -361,7 +472,7 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
         fallbackToFree,
         freeThreshold,
       })
-      if (outcome.action === 'stay') return decision
+      if (outcome.action === 'stay') return maybeJevRoute(agent, decision, route, threshold)
       if (outcome.action === 'hold-both-hot') {
         return {
           ...decision,
