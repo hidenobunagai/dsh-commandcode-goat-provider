@@ -26,6 +26,12 @@ export interface JevCandidate {
   provider: string
   model: string
   tier: JevTier
+  /** CLI/実機運用（SSH・systemd・デプロイ）に向かない候補（設計・コード生成向き）→ cliOps 判定が高いと外れる。 */
+  avoidCliOps?: boolean
+  /** 内部情報が学習に使われ得る候補（contributor tier など）→ privateInfo 判定が高いと外れる。 */
+  avoidRiskyPrivacy?: boolean
+  /** 無料/枠外モデル。quota を気にせず常に冷却扱い（残高次第で無料をトライする用途）。 */
+  quotaExempt?: boolean
 }
 
 /** 既定の候補梯子: 現行ペア + Free。candidates 空のときのフォールバック。 */
@@ -162,10 +168,12 @@ export function pickRoute(input: {
   quotaPct: Partial<Record<FailoverSide, number>>
   threshold: number
   requiredCap: number
+  /** Jev の特徴判定。cliOps ≥0.6 で avoidCliOps 候補、privateInfo ≥0.6 で avoidRiskyPrivacy 候補を除外する。 */
+  verdict?: { cliOps?: number; privateInfo?: number }
   current: { provider: string; model: string }
   freeModel: string
 }): RouterOutcome {
-  const { candidates, quotaPct, threshold, requiredCap, current, freeModel } = input
+  const { candidates, quotaPct, threshold, requiredCap, verdict, current, freeModel } = input
   /** 候補の quota 側。free は goat 枠で計上、正規ペア外はプロバイダ名で推定する。 */
   const sideFor = (c: JevCandidate): FailoverSide => {
     const matched = sideOf(c.provider, c.model, freeModel)
@@ -173,10 +181,14 @@ export function pickRoute(input: {
     if (matched) return matched
     return c.provider.startsWith('opencode') ? 'go' : 'goat'
   }
-  const pctOf = (c: JevCandidate): number => quotaPct[sideFor(c)] ?? Number.POSITIVE_INFINITY
+  /** 無料/枠外モデルは常に冷却扱い（安くて十分なら積極的に使う）。 */
+  const pctOf = (c: JevCandidate): number =>
+    c.quotaExempt ? 0 : (quotaPct[sideFor(c)] ?? Number.POSITIVE_INFINITY)
   const same = (a: { provider: string; model: string }, b: { provider: string; model: string }): boolean =>
     a.provider === b.provider && a.model === b.model
-  const eligible = candidates.filter((c) => TASK_TIER_CAPABILITY[c.tier] >= requiredCap)
+  let eligible = candidates.filter((c) => TASK_TIER_CAPABILITY[c.tier] >= requiredCap)
+  if ((verdict?.cliOps ?? 0) >= 0.6) eligible = eligible.filter((c) => !c.avoidCliOps)
+  if ((verdict?.privateInfo ?? 0) >= 0.6) eligible = eligible.filter((c) => !c.avoidRiskyPrivacy)
   if (eligible.length === 0) return { action: 'stay', reason: 'no_sufficient_candidate' }
   const cool = eligible
     .filter((c) => pctOf(c) < threshold)
@@ -203,7 +215,7 @@ export function pickRoute(input: {
 export async function classifyTask(
   apiKey: string,
   promptHead: string,
-): Promise<{ difficulty: number; risk: number; confidence: number } | null> {
+): Promise<{ difficulty: number; risk: number; cliOps: number; privateInfo: number; confidence: number } | null> {
   try {
     const req = buildJevRequest(
       { apiKey },
@@ -231,6 +243,24 @@ export async function classifyTask(
             false: 'Nothing destructive or security-sensitive is in scope.',
           },
         },
+        cliOps: {
+          type: 'noul',
+          instructions:
+            'The task is primarily CLI/ops work: terminal commands, SSH, systemd/services, environment or infrastructure configuration, deployment, log triage — rather than writing substantial new code.',
+          criteria: {
+            true: 'Most of the work is operations on a real machine (shell, services, config files, deployments).',
+            false: 'The work is mainly code design, implementation, refactoring, or document/chat work.',
+          },
+        },
+        privateInfo: {
+          type: 'noul',
+          instructions:
+            'The task exposes internal/private information that the user would not want used for model training: local IPs, SSH host details, internal domains, file system layout of private machines, credentials.',
+          criteria: {
+            true: 'Internal/private details (private IPs, host names, SSH details, internal services) are part of the task.',
+            false: 'The task involves no private/internal information.',
+          },
+        },
       },
     )
     const res = await fetch(req.url, { method: req.method, headers: req.headers, body: req.body })
@@ -239,6 +269,8 @@ export async function classifyTask(
     return {
       difficulty: difficulty.score,
       risk: noulAnswer(parsed.answers, 'risk'),
+      cliOps: noulAnswer(parsed.answers, 'cliOps'),
+      privateInfo: noulAnswer(parsed.answers, 'privateInfo'),
       confidence: difficulty.confidence,
     }
   } catch {

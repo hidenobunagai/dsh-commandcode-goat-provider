@@ -113,7 +113,17 @@ export interface UsageFailoverConfig {
     /** Head size of the latest user prompt sent to the judge (default 1600). */
     promptHeadChars?: number
     /** User-preselected candidate ladder; empty = DEFAULT_CANDIDATES (heavy/normal/light). */
-    candidates?: { provider: string; model: string; tier: 'light' | 'normal' | 'heavy' }[]
+    candidates?: {
+      provider: string
+      model: string
+      tier: 'light' | 'normal' | 'heavy'
+      /** CLI/実機運用に向かない候補（設計向き）→ cliOps 判定が高いと外れる。 */
+      avoidCliOps?: boolean
+      /** 内部情報が学習に使われ得る候補 → privateInfo 判定が高いと外れる。 */
+      avoidRiskyPrivacy?: boolean
+      /** 無料/枠外モデル（常に冷却扱い）。 */
+      quotaExempt?: boolean
+    }[]
   }
 }
 
@@ -136,6 +146,9 @@ export const UsageFailoverConfigSchema: z<UsageFailoverConfig> = z.object({
         provider: z.string(),
         model: z.string(),
         tier: z.union(['light', 'normal', 'heavy']),
+        avoidCliOps: z.boolean().default(false),
+        avoidRiskyPrivacy: z.boolean().default(false),
+        quotaExempt: z.boolean().default(false),
       }),
     ).default([]),
   }).default({ mode: 'off', apiKeyEnv: 'TYPESAFE_API_KEY', stickyMs: 600000, promptHeadChars: 1600, candidates: [] }),
@@ -421,12 +434,13 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
         },
         threshold,
         requiredCap,
+        verdict: { cliOps: verdict.cliOps, privateInfo: verdict.privateInfo },
         current: route,
         freeModel: getConfig().freeModel,
       })
       appendRouterLog(
         join(process.env.HOME ?? '~', '.dsh', 'jev-router.log'),
-        `mode=${cfg.mode} difficulty=${verdict.difficulty.toFixed(2)} risk=${verdict.risk.toFixed(2)} conf=${verdict.confidence.toFixed(2)} action=${outcome.action} ${outcome.to ? `to=${outcome.to.provider}/${outcome.to.model}` : ''} reason=${outcome.reason} task="${prompt.slice(0, 60).replace(/\s+/g, ' ')}"`,
+        `mode=${cfg.mode} difficulty=${verdict.difficulty.toFixed(2)} risk=${verdict.risk.toFixed(2)} cliOps=${verdict.cliOps.toFixed(2)} privateInfo=${verdict.privateInfo.toFixed(2)} conf=${verdict.confidence.toFixed(2)} action=${outcome.action} ${outcome.to ? `to=${outcome.to.provider}/${outcome.to.model}` : ''} reason=${outcome.reason} task="${prompt.slice(0, 60).replace(/\s+/g, ' ')}"`,
       )
       if (outcome.action !== 'switch' || !outcome.to || cfg.mode !== 'live') return decision
       const target = { provider: outcome.to.provider, model: outcome.to.model }
