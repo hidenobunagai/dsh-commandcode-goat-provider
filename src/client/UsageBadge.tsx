@@ -32,20 +32,6 @@ const FALLBACK: UsageBadgeText = {
   quota: 'Provider quota',
 }
 
-/** The `usage-failover` settings section as this client writes it. */
-export interface UsageFailoverSettings {
-  enabled?: boolean
-  threshold?: number
-  refreshIntervalMs?: number
-}
-
-/** Minimal owner-scope seam over the `usage-failover` settings namespace. */
-export interface UsageScopeLike {
-  getSnapshot: () => { status?: string; value?: UsageFailoverSettings } | undefined
-  subscribe: (listener: () => void) => () => void
-  set: (field: string, value: unknown) => Promise<void>
-}
-
 /** Injected session-state hook (open/closed tab) from the slot runtime. */
 type SessionStateHook = (selector: (s: { openState?: string }) => string | undefined) => string | undefined
 
@@ -55,12 +41,6 @@ export interface UsageBadgeProps {
   useSession?: SessionStateHook
   /** Resolved badge strings; falls back to English when omitted. */
   t?: UsageBadgeText
-  /**
-   * Owner scope over the `usage-failover` settings namespace. When present the
-   * auto-switch chip becomes a real toggle that persists to the host; without
-   * it the chip stays a read-only status.
-   */
-  failoverScope?: UsageScopeLike
 }
 
 interface WindowReading {
@@ -162,85 +142,11 @@ function WindowRow({ reading }: { reading: WindowReading }): React.JSX.Element {
  * @param props - projection hook, session state hook, and resolved strings.
  * @returns the badge trigger and its detail panel.
  */
-export function UsageBadge({ useProjection, useSession, t = FALLBACK, failoverScope }: UsageBadgeProps) {
+export function UsageBadge({ useProjection, useSession, t = FALLBACK }: UsageBadgeProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLSpanElement | null>(null)
   const view = useProjection('usageFailover', (v) => v as UsageFailoverView | undefined)
   const openState = useSession?.((s) => s.openState) ?? 'open'
-
-  // ── auto-switch toggle ────────────────────────────────────────────────────
-  // The host projection reports the effective section. A local pending value
-  // fronts it while the write settles, then gives way to the host's value.
-  const [pending, setPending] = useState<boolean | undefined>(undefined)
-  const [failed, setFailed] = useState(false)
-  const scope = failoverScope
-  const scopeStatus = scope?.getSnapshot?.()?.status
-  const storedEnabled = scope?.getSnapshot?.()?.value?.enabled ?? view?.enabled
-  const writable = scope !== undefined && scopeStatus !== 'unavailable'
-  const busy = pending !== undefined
-  const enabled = pending ?? storedEnabled
-  const manual = enabled === false
-
-  useEffect(() => {
-    if (pending !== undefined && storedEnabled === pending) setPending(undefined)
-  }, [pending, storedEnabled])
-
-  const writeEnabled = (next: boolean): void => {
-    if (scope === undefined) return
-    setPending(next)
-    setFailed(false)
-    void scope.set('enabled', next).then(
-      () => { setPending(undefined) },
-      () => { setFailed(true); setPending(undefined) },
-    )
-  }
-
-  /**
-   * Hover text: why the toggle is locked, or what a click will do.
-   * @returns the chip's title.
-   */
-  const chipHint = (): string => {
-    if (failed) return t.autoFailed
-    if (!writable) return t.autoUnknown
-    return manual ? t.autoTurnOn : t.autoTurnOff
-  }
-
-  /**
-   * One chip that toggles the failover automation. The off state also shows on
-   * the trigger, so a disabled automation is discoverable without opening the
-   * panel.
-   * @param props.inHeader - render the compact trigger variant.
-   * @returns the toggle chip.
-   */
-  const AutoSwitchChip = ({ inHeader }: { inHeader?: boolean }): React.JSX.Element => {
-    const state = failed
-      ? t.autoFailed
-      : busy
-        ? t.autoSaving
-        : !writable
-          ? t.auto
-          : manual ? t.manual : t.autoOn
-    const cls = failed
-      ? css.chipError
-      : manual ? css.chipWarn : css.chip
-    return (
-      <button
-        type="button"
-        role="switch"
-        aria-checked={enabled === true}
-        aria-label={manual || !writable ? t.autoTurnOn : t.autoTurnOff}
-        title={chipHint()}
-        disabled={!writable || busy}
-        className={`${cls}${inHeader ? ` ${css.chipHeader}` : ''}`}
-        onClick={(event) => {
-          event.stopPropagation()
-          writeEnabled(manual)
-        }}
-      >
-        {state}
-      </button>
-    )
-  }
 
   const model = useMemo(() => {
     if (!view || (!view.go && !view.goat)) return null
@@ -255,7 +161,6 @@ export function UsageBadge({ useProjection, useSession, t = FALLBACK, failoverSc
       sides,
       hot: sides.some((s) => s.tone === 'hot'),
       hotLabels: sides.filter((s) => s.tone === 'hot').map((s) => s.label).join(' '),
-      lastSwitch: view.lastSwitch,
     }
   }, [view, t])
 
@@ -300,17 +205,9 @@ export function UsageBadge({ useProjection, useSession, t = FALLBACK, failoverSc
           </span>
         ))}
         {model.hot ? <span className={css.warn} aria-hidden="true">⚠</span> : null}
-        {/* Indicator only: this lives inside the trigger button, so it cannot be
-            the toggle itself. The real control is the panel chip. */}
-        {manual ? <span className={css.chipMuted}>{t.manual}</span> : null}
       </button>
       {open ? (
         <div className={css.panel} role="dialog" aria-label={t.quota}>
-          <header className={css.panelHeader}>
-            <span className={css.panelTitle}>{t.auto}</span>
-            <AutoSwitchChip />
-          </header>
-
           {model.sides.map((side) => (
             <section key={side.key} className={css.group}>
               <h4 className={css.groupTitle}>
@@ -328,29 +225,6 @@ export function UsageBadge({ useProjection, useSession, t = FALLBACK, failoverSc
               </ul>
             </section>
           ))}
-
-          <footer className={css.panelFoot}>
-            {model.lastSwitch ? (
-              <>
-                <span className={css.footLabel}>{t.autoLast}</span>
-                <span className={css.footArrow}>
-                  {model.lastSwitch.from === 'go' ? t.go : model.lastSwitch.from === 'goat' ? t.goat : t.free}
-                  <span className={css.arrowMark} aria-hidden="true">→</span>
-                  {model.lastSwitch.to === 'go' ? t.go : model.lastSwitch.to === 'goat' ? t.goat : t.free}
-                </span>
-                <span className={css.footValue}>
-                  {model.lastSwitch.reason === 'error'
-                    ? model.lastSwitch.detail ?? t.autoError
-                    : `${Math.round(model.lastSwitch.usagePct)}%`}
-                </span>
-              </>
-            ) : (
-              <>
-                <span className={css.footDot} aria-hidden="true" />
-                <span className={css.footLabel}>{t.autoNever}</span>
-              </>
-            )}
-          </footer>
         </div>
       ) : null}
     </span>

@@ -20,9 +20,6 @@ export const inject = [
 
 const NS = 'llm-commandcode-goat'
 
-/** Settings namespace owned by the usage-failover unit. */
-const USAGE_NS = 'usage-failover'
-
 /** Badge locale key pairs, so one list feeds every `t` field. */
 const BADGE_TEXT_KEYS: Record<keyof UsageBadgeText, LocaleKey> = {
   go: 'usageGo',
@@ -31,18 +28,6 @@ const BADGE_TEXT_KEYS: Record<keyof UsageBadgeText, LocaleKey> = {
   window5h: 'usageWindow5h',
   windowWeek: 'usageWindowWeek',
   windowMonth: 'usageWindowMonth',
-  auto: 'usageAuto',
-  autoOn: 'usageAutoOn',
-  autoTurnOn: 'usageAutoTurnOn',
-  autoTurnOff: 'usageAutoTurnOff',
-  autoSaving: 'usageAutoSaving',
-  autoFailed: 'usageAutoFailed',
-  autoUnknown: 'usageAutoUnknown',
-  manual: 'usageManual',
-  autoOff: 'usageAutoOff',
-  autoNever: 'usageAutoNever',
-  autoLast: 'usageAutoLast',
-  autoError: 'usageAutoError',
   hot: 'usageHot',
   quota: 'usageQuota',
 }
@@ -68,10 +53,6 @@ export function apply(ctx: any): void {
     ctx.settingsScope.bind({ namespace: NS }),
     credentialsApi,
   )
-
-  // Owner scope for the failover switch. Bound here (not per render) so the
-  // write runs on the providing fiber, matching the settings card's pattern.
-  const failoverScope = ctx.settingsScope?.bind?.({ namespace: USAGE_NS }) as UsageScopeLike | undefined
 
   function CommandCodeCardSlot(): React.JSX.Element {
     const state = useSyncExternalStore(
@@ -102,7 +83,7 @@ export function apply(ctx: any): void {
         CommandCodeCardSlot,
       )
     })
-    // Session-header usage badge (Go/GOAT quota, failover state). The runtime
+    // Session-header usage badge (Go/GOAT quota). The runtime
     // injects the projection/session hooks as props, so this wrapper forwards
     // them and supplies only the locale-resolved strings.
     const UsageBadgeSlot = (props: UsageBadgeProps): React.JSX.Element => {
@@ -111,7 +92,7 @@ export function apply(ctx: any): void {
         (cb) => ctx.locale?.subscribe?.(cb) ?? (() => {}),
         () => ctx.locale?.getSnapshot?.().active ?? 'en',
       )
-      return React.createElement(UsageBadge, { ...props, t: badgeText(getLocaleText(lang)), failoverScope })
+      return React.createElement(UsageBadge, { ...props, t: badgeText(getLocaleText(lang)) })
     }
     ctx.slots.inject('conversation.session.header.actions', function* () {
       yield ctx.slots.register(
