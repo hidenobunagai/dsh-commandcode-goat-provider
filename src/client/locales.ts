@@ -43,18 +43,6 @@ export type LocaleKey =
   | 'usageWindow5h'
   | 'usageWindowWeek'
   | 'usageWindowMonth'
-  | 'usageAuto'
-  | 'usageAutoOn'
-  | 'usageAutoTurnOn'
-  | 'usageAutoTurnOff'
-  | 'usageAutoSaving'
-  | 'usageAutoFailed'
-  | 'usageAutoUnknown'
-  | 'usageManual'
-  | 'usageAutoOff'
-  | 'usageAutoNever'
-  | 'usageAutoLast'
-  | 'usageAutoError'
   | 'usageHot'
   | 'usageQuota'
 
@@ -101,18 +89,6 @@ export const EN_LOCALES: Record<LocaleKey, string> = {
   usageWindow5h: '5h',
   usageWindowWeek: 'week',
   usageWindowMonth: 'month',
-  usageAuto: 'Auto-switch',
-  usageAutoOn: 'Auto-switch on',
-  usageAutoTurnOn: 'Turn automatic switching on',
-  usageAutoTurnOff: 'Turn automatic switching off',
-  usageAutoSaving: 'Saving…',
-  usageAutoFailed: 'Could not save the setting',
-  usageAutoUnknown: 'Unavailable in this deployment',
-  usageManual: 'Manual',
-  usageAutoOff: 'Auto-switch off',
-  usageAutoNever: 'No switch has fired yet',
-  usageAutoLast: 'Last switch',
-  usageAutoError: 'provider failure',
   usageHot: 'at or over threshold',
   usageQuota: 'Provider quota',
 }

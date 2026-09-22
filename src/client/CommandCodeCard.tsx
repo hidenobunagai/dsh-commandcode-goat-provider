@@ -54,7 +54,7 @@ export function CommandCodeCard({
   const blocked = !state.isDirty || invalid || state.isSaving
 
   return (
-    <li className={`${styles.card} ${open ? styles.cardOpen : ''}`}>
+    <div className={`${styles.card} ${open ? styles.cardOpen : ''}`}>
       <button
         type="button"
         className={styles.header}
@@ -261,6 +261,6 @@ export function CommandCodeCard({
           </div>
         </div>
       ) : null}
-    </li>
+    </div>
   )
 }

@@ -5,14 +5,8 @@ import type {} from '@deepseek-ai/dsh-client-runtime/client'
 import React, { useSyncExternalStore } from 'react'
 import { CommandCodeCard } from './CommandCodeCard.tsx'
 import { CommandCodeCardController } from './card-controller.ts'
-import { UsageBadge, type UsageBadgeProps, type UsageBadgeText, type UsageScopeLike } from './UsageBadge.tsx'
+import { UsageBadge, type UsageBadgeProps, type UsageBadgeText } from './UsageBadge.tsx'
 import { getLocaleText, type LocaleKey } from './locales.ts'
-
-declare module '@deepseek-ai/dsh-client-ui-slots' {
-  interface SlotMap {
-    'settings.plugin.item': { kind: 'keyed'; scope: 'root'; owner: { children?: never } }
-  }
-}
 
 export const name = 'llm-commandcode-goat'
 export const inject = [
@@ -99,10 +93,10 @@ export function apply(ctx: any): void {
   }
 
   if (ctx.slots && typeof ctx.slots.inject === 'function') {
-    ctx.slots.inject('settings.plugin.item', function* () {
+    ctx.slots.inject('settings.models.provider-card', function* () {
       yield ctx.slots.register(
         {
-          name: 'settings.plugin.item',
+          name: 'settings.models.provider-card',
           key: NS,
         },
         CommandCodeCardSlot,

@@ -31,7 +31,7 @@ The bundle is configured under the `llm-commandcode-goat` settings namespace:
 
 ## Quota & outage auto-switch
 
-The DeepSeek V4.1 Flash pair (`opencode-go-v41/deepseek-flash` ⇄ `commandcode-goat/deepseek/deepseek-v4.1-flash`) switches automatically, and the session-header badge shows both sides' quota plus the last switch. Configured under the `usage-failover` namespace:
+The DeepSeek V4.1 Flash pair (`opencode-go-v41/deepseek-flash` ⇄ `commandcode-goat/deepseek/deepseek-v4.1-flash`) switches automatically, and the session-header badge shows both sides' quota. Configured under the `usage-failover` namespace:
 
 | Field | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
@@ -56,7 +56,7 @@ The DeepSeek V4.1 Flash pair (`opencode-go-v41/deepseek-flash` ⇄ `commandcode-
 > Explore interactive views, route tracing, light/dark themes, and repository source mappings.
 
 - **Host Service**: `src/index.ts` exports a standard Cordis plugin declaring `inject: { llm, attachments }` and registers the `commandcode-goat` adapter, configurable provider metadata, model discovery, and settings listeners.
-- **Browser Client**: `src/client/index.ts` exports a CJS lazy module registered via `dsh.client` that injects the configuration card into the `settings.plugin.item` slot.
+- **Browser Client**: `src/client/index.ts` exports a CJS lazy module registered via `dsh.client` that injects the configuration card into the `settings.models.provider-card` slot (keyed by the `llm-commandcode-goat` settings namespace, so the card renders inside this provider's card on Settings > Models).
 - **Patch Manifest**: `cordis.patch.yml` specifies the single declarative entry row required for DSH deployment profiles. This file is read by `dsh bundle` at deploy time — do not rename or remove it.
 - **Model Catalog**: `src/catalog/data.ts` is the single source of truth for all known models; `src/catalog/index.ts` derives pricing, capability, and display maps from it. Add new models there — never in multiple places. See [docs/model-sync.md](docs/model-sync.md) for the sync, version-bump, and publish procedure.
 

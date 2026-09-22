@@ -16,18 +16,6 @@ export interface UsageBadgeText {
   window5h: string
   windowWeek: string
   windowMonth: string
-  auto: string
-  autoOn: string
-  autoTurnOn: string
-  autoTurnOff: string
-  autoSaving: string
-  autoFailed: string
-  autoUnknown: string
-  manual: string
-  autoOff: string
-  autoNever: string
-  autoLast: string
-  autoError: string
   hot: string
   quota: string
 }
@@ -40,18 +28,6 @@ const FALLBACK: UsageBadgeText = {
   window5h: '5h',
   windowWeek: 'week',
   windowMonth: 'month',
-  auto: 'Auto-switch',
-  autoOn: 'Auto-switch on',
-  autoTurnOn: 'Turn automatic switching on',
-  autoTurnOff: 'Turn automatic switching off',
-  autoSaving: 'Saving…',
-  autoFailed: 'Could not save the setting',
-  autoUnknown: 'Unavailable in this deployment',
-  manual: 'Manual',
-  autoOff: 'Auto-switch off',
-  autoNever: 'No switch has fired yet',
-  autoLast: 'Last switch',
-  autoError: 'provider failure',
   hot: 'at or over threshold',
   quota: 'Provider quota',
 }
