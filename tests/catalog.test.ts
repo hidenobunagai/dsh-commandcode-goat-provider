@@ -82,6 +82,7 @@ describe('catalog', () => {
     expect(modelSupportsEffort('deepseek/deepseek-v4.1-flash')).toBe(true)
     expect(modelSupportsEffort({ provider: 'commandcode-goat', model: 'deepseek/deepseek-v4.1-flash' })).toBe(true)
     expect(modelSupportsEffort('gpt-5.6-luna')).toBe(true)
+    expect(modelSupportsEffort('gpt-6-luna')).toBe(true)
 
     // Known models without efforts
     expect(modelSupportsEffort('moonshotai/Kimi-K3')).toBe(false)
