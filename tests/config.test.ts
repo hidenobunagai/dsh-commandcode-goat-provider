@@ -17,13 +17,14 @@ describe('configuration', () => {
 
   it('validates configuration and applies defaults via schema', () => {
     const parsed = Config({})
+    // Volatile fields parse to live references; the plain ones stay values.
     expect(parsed.apiKeyEnv).toBe('COMMANDCODE_API_KEY')
-    expect(parsed.baseURL).toBe('https://api.commandcode.ai')
+    expect(parsed.baseURL.get()).toBe('https://api.commandcode.ai')
     expect(parsed.defaultContextWindow).toBe(262144)
     expect(parsed.maxTokens).toBe(65536)
-    expect(parsed.requestTimeoutMs).toBe(60000)
-    expect(parsed.streamIdleTimeoutMs).toBe(300000)
-    expect(parsed.enableZdr).toBe(false)
+    expect(parsed.requestTimeoutMs.get()).toBe(60000)
+    expect(parsed.streamIdleTimeoutMs.get()).toBe(300000)
+    expect(parsed.enableZdr.get()).toBe(false)
     expect(parsed.protocolOverrides).toEqual([])
   })
 

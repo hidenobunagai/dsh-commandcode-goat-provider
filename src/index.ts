@@ -13,6 +13,7 @@ import type {
   LlmDiscoveredModel,
   LlmModelDiscoveryRequest,
 } from '@deepseek-ai/dsh-llm'
+import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-settings'
 import { Config, DEFAULT_API_KEY_ENV, resolveConfig } from './config.ts'
 import { applyUsageService } from './usage/service.ts'
@@ -34,7 +35,7 @@ export { Config }
 const NS = 'llm-commandcode-goat'
 
 export function apply(ctx: Context, config: CommandCodeConfig): void {
-  let current: () => CommandCodeConfig = () => config
+  const current: () => CommandCodeConfig = () => config
   let discoveredCatalog: readonly LlmDiscoveredModel[] | undefined
 
   const getCurrentConfig = () => resolveConfig(current())
@@ -195,13 +196,13 @@ export function apply(ctx: Context, config: CommandCodeConfig): void {
     return () => abortController.abort()
   }, 'dsh-commandcode-goat-provider: model discovery warmup')
 
-  ctx.inject(['settings'], (settingsCtx) => {
-    settingsCtx.settings.installSection(ctx, NS, Config, config, {
-      setSource: (source) => {
-        current = source
-      },
-      onChange: ensureRegistrationFacts,
-    })
+  // Volatile Config edits reach the running plugin through the loader event;
+  // the profile's config-editor persists them, so no settings section is
+  // installed here (0.1.7 dropped installSection in favour of entry forms).
+  ctx.on('loader/volatile-update', ensureRegistrationFacts)
+
+  ctx.inject(['settings'], (child) => {
+    child.effect(() => child.settings.configure({ auto: false }, ctx.fiber))
   })
 
   // Usage-failover unit: quota projection + pre-step auto-switch + tools.

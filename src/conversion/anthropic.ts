@@ -6,7 +6,7 @@ import type {
   RequestModel,
   ResolveImage,
 } from '../types.ts'
-import { extractTextContent, findToolResultBlock, parseJsonArguments, resolveImageData, sanitizeCallId } from './shared.ts'
+import { extractTextContent, parseJsonArguments, resolveImageData, sanitizeCallId } from './shared.ts'
 
 export async function toAnthropicRequest(
   options: GenerateOptions,
@@ -17,23 +17,21 @@ export async function toAnthropicRequest(
   const rawMessages: { role: 'user' | 'assistant'; blocks: AnthropicContentBlock[] }[] = []
 
   for (const message of options.messages) {
-    if (message.source.kind === 'tool') {
-      const toolResultBlock = findToolResultBlock(message.content)
-      const callId = toolResultBlock?.toolCallId ?? (message.source as { callId?: string }).callId
-      const text = toolResultBlock ? extractTextContent(toolResultBlock.content) : extractTextContent(message.content)
+    if (message.role === 'tool') {
+      const text = extractTextContent(message.content)
 
       rawMessages.push({
         role: 'user',
         blocks: [
           {
             type: 'tool_result',
-            tool_use_id: sanitizeCallId(String(callId)),
+            tool_use_id: sanitizeCallId(String(message.toolCallId)),
             content: text,
-            is_error: toolResultBlock?.isError ?? false,
+            is_error: message.isError ?? false,
           },
         ],
       })
-    } else if (message.source.kind === 'user') {
+    } else if (message.role === 'user') {
       const blocks: AnthropicContentBlock[] = []
       for (const block of message.content) {
         if (block.type === 'text') {
@@ -50,20 +48,12 @@ export async function toAnthropicRequest(
               data: base64,
             },
           })
-        } else if (block.type === 'tool-result') {
-          const text = extractTextContent(block.content)
-          blocks.push({
-            type: 'tool_result',
-            tool_use_id: sanitizeCallId(String(block.toolCallId)),
-            content: text,
-            is_error: block.isError ?? false,
-          })
         }
       }
       if (blocks.length > 0) {
         rawMessages.push({ role: 'user', blocks })
       }
-    } else if (message.source.kind === 'model') {
+    } else if (message.role === 'assistant') {
       const blocks: AnthropicContentBlock[] = []
       for (const block of message.content) {
         if (block.type === 'text') {

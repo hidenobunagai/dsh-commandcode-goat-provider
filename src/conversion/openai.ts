@@ -7,7 +7,7 @@ import type {
   RequestModel,
   ResolveImage,
 } from '../types.ts'
-import { extractTextContent, findToolResultBlock, resolveImageData, sanitizeCallId } from './shared.ts'
+import { extractTextContent, resolveImageData, sanitizeCallId } from './shared.ts'
 
 export async function toOpenAiRequest(
   options: GenerateOptions,
@@ -22,17 +22,15 @@ export async function toOpenAiRequest(
   }
 
   for (const message of options.messages) {
-    if (message.source.kind === 'tool') {
-      const toolResultBlock = findToolResultBlock(message.content)
-      const callId = toolResultBlock?.toolCallId ?? (message.source as { callId?: string }).callId
-      const text = toolResultBlock ? extractTextContent(toolResultBlock.content) : extractTextContent(message.content)
+    if (message.role === 'tool') {
+      const text = extractTextContent(message.content)
 
       messages.push({
         role: 'tool',
-        tool_call_id: sanitizeCallId(String(callId)),
+        tool_call_id: sanitizeCallId(String(message.toolCallId)),
         content: text,
       })
-    } else if (message.source.kind === 'user') {
+    } else if (message.role === 'user') {
       const parts: OpenAiContentPart[] = []
       let hasImage = false
 
@@ -48,13 +46,6 @@ export async function toOpenAiRequest(
             type: 'image_url',
             image_url: { url: `data:${mediaType};base64,${base64}` },
           })
-        } else if (block.type === 'tool-result') {
-          const text = extractTextContent(block.content)
-          messages.push({
-            role: 'tool',
-            tool_call_id: sanitizeCallId(String(block.toolCallId)),
-            content: text,
-          })
         }
       }
 
@@ -66,7 +57,7 @@ export async function toOpenAiRequest(
           messages.push({ role: 'user', content: text })
         }
       }
-    } else if (message.source.kind === 'model') {
+    } else if (message.role === 'assistant') {
       const text = extractTextContent(message.content)
       const toolCalls: OpenAiToolCall[] = []
 

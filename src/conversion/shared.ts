@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import type { ContentBlock, ToolResultBlock } from '@deepseek-ai/dsh-llm'
+import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import { LlmError } from '@deepseek-ai/dsh-llm'
 import type { ResolveImage } from '../types.ts'
 
@@ -21,8 +21,6 @@ export function extractTextContent(blocks: readonly ContentBlock[]): string {
   for (const b of blocks) {
     if (b.type === 'text') {
       result += b.text
-    } else if (b.type === 'tool-result') {
-      result += extractTextContent(b.content)
     }
   }
   return result
@@ -38,10 +36,6 @@ export function parseJsonArguments(raw: string): Record<string, unknown> {
   } catch {
     return { raw }
   }
-}
-
-export function findToolResultBlock(blocks: readonly ContentBlock[]): ToolResultBlock | undefined {
-  return blocks.find((b): b is ToolResultBlock => b.type === 'tool-result')
 }
 
 export async function resolveImageData(

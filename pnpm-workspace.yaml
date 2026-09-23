@@ -1,0 +1,6 @@
+# pnpm 11 default blocks packages released <24h ago; the harness line ships
+# same-day, so this local plugin keeps the gate off (revert to 1440 to re-arm).
+minimumReleaseAge: 0
+overrides:
+  js-yaml: ^4.3.2
+  '@deepseek-ai/dsh-llm': 0.1.7-alpha.2

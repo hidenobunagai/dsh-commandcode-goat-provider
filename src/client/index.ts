@@ -13,7 +13,7 @@ export const inject = [
   'slots',
   'locale',
   'connection',
-  'settingsScope',
+  'configForms',
   'remote',
   'remote.credentials',
 ]
@@ -50,7 +50,7 @@ export function apply(ctx: any): void {
   const credentialsApi = ctx.remote?.credentials ?? (connection as any)?.api?.credentials
 
   const controller = new CommandCodeCardController(
-    ctx.settingsScope.bind({ namespace: NS }),
+    ctx.configForms.get(NS),
     credentialsApi,
   )
 

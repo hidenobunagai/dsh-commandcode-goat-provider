@@ -11,7 +11,7 @@ import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-session-projection'
-import { createUserMessage, type ReasoningEffortId } from '@deepseek-ai/dsh-llm'
+import { createUserMessage, type ContextFormed, type ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-session-projection/types'
 import { fetchGoUsage, fetchGoatUsage, maxPercent, type UsageSnapshot } from './fetch.ts'
@@ -30,6 +30,14 @@ import { modelSupportsEffort } from '../catalog/data.ts'
 
 /** Cordis plugin name used by loader diagnostics. */
 export const usageServiceName = 'usage-failover'
+
+// 0.1.7 dropped the shared catch-all `plugin` source kind: every producer
+// declares its own entry in the merge-extensible map (see plan-mode).
+declare module '@deepseek-ai/dsh-llm' {
+  interface MessageSourceMap {
+    'llm-commandcode-goat': { kind: 'llm-commandcode-goat' } & ContextFormed
+  }
+}
 
 /** The agent registry that owns pre-step processing. */
 export const usageServiceInject = ['agents', 'sessionProjections', 'agentDefaultModel']
@@ -254,7 +262,7 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
   const notice = (text: string) =>
     createUserMessage({
       content: [{ type: 'text' as const, text }],
-      source: { kind: 'plugin' as const, plugin: usageServiceName },
+      source: { kind: 'llm-commandcode-goat' as const, form: 'notice', summary: text },
     })
 
   /** Route each running Agent's next request must take while its live ref is out of reach. */
