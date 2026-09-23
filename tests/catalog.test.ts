@@ -95,14 +95,19 @@ describe('catalog', () => {
   })
 
   it('declares the live-probed muse-spark effort ladder', () => {
-    // Probed 2026-09-23 against /provider/v1/chat/completions: low..max all 200
-    // with reasoning_tokens differentiated (low 450 -> max 971 on 1.3-contributor);
-    // minimal and ultra rejected 400 (expected low|medium|high|xhigh|max).
+    // Probed 2026-09-23 against /provider/v1/chat/completions: every listed rung
+    // returns 200 with differentiated reasoning_tokens (t=0: low ~388 mean,
+    // xhigh ~968, max ~1301 on plain 1.3); minimal/ultra/none rejected 400.
+    // Contributor tier drops `max`: dev.meta.ai/docs/reasoning limits it to
+    // standard-tier muse-spark-1.3, and probing confirms contributor max is
+    // indistinguishable from xhigh (t=0, 4 pairs: mean rt 1071 vs 1086).
     expect(modelSupportsEffort('meta/muse-spark-1.3-contributor')).toBe(true)
     expect(modelSupportsEffort('meta/muse-spark-1.3')).toBe(true)
     const resolved = resolveCommandCodeModel('commandcode-goat', 'meta/muse-spark-1.3-contributor', undefined, defaultConfig)
-    expect(resolved.reasoning?.efforts.map((e) => String(e.id))).toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
+    expect(resolved.reasoning?.efforts.map((e) => String(e.id))).toEqual(['low', 'medium', 'high', 'xhigh'])
     expect(String(resolved.reasoning?.defaultEffort)).toBe('medium')
+    const plain = resolveCommandCodeModel('commandcode-goat', 'meta/muse-spark-1.3', undefined, defaultConfig)
+    expect(plain.reasoning?.efforts.map((e) => String(e.id))).toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
   })
 })
 
