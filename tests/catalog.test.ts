@@ -93,5 +93,16 @@ describe('catalog', () => {
     expect(modelSupportsEffort({ provider: 'commandcode-goat', model: 'custom/model:free' })).toBe(false)
     expect(modelSupportsEffort('unknown-free')).toBe(false)
   })
+
+  it('declares the live-probed muse-spark effort ladder', () => {
+    // Probed 2026-09-23 against /provider/v1/chat/completions: low..max all 200
+    // with reasoning_tokens differentiated (low 450 -> max 971 on 1.3-contributor);
+    // minimal and ultra rejected 400 (expected low|medium|high|xhigh|max).
+    expect(modelSupportsEffort('meta/muse-spark-1.3-contributor')).toBe(true)
+    expect(modelSupportsEffort('meta/muse-spark-1.3')).toBe(true)
+    const resolved = resolveCommandCodeModel('commandcode-goat', 'meta/muse-spark-1.3-contributor', undefined, defaultConfig)
+    expect(resolved.reasoning?.efforts.map((e) => String(e.id))).toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
+    expect(String(resolved.reasoning?.defaultEffort)).toBe('medium')
+  })
 })
 
