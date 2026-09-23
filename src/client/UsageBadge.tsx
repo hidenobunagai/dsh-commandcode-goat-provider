@@ -137,8 +137,8 @@ function WindowRow({ reading }: { reading: WindowReading }): React.JSX.Element {
 }
 
 /**
- * Session-header usage badge: a compact Go/GOAT meter pair with a click-open
- * quota breakdown. Renders nothing until a provider reports a snapshot.
+ * Session-header usage badge: a compact GOAT meter with a click-open quota
+ * breakdown. Renders nothing until GOAT reports a snapshot.
  * @param props - projection hook, session state hook, and resolved strings.
  * @returns the badge trigger and its detail panel.
  */
@@ -149,10 +149,9 @@ export function UsageBadge({ useProjection, useSession, t = FALLBACK }: UsageBad
   const openState = useSession?.((s) => s.openState) ?? 'open'
 
   const model = useMemo(() => {
-    if (!view || (!view.go && !view.goat)) return null
+    if (!view?.goat) return null
     const sides = [
-      ...(view.go ? [{ key: 'go', label: t.go, side: view.go }] : []),
-      ...(view.goat ? [{ key: 'goat', label: t.goat, side: view.goat }] : []),
+      { key: 'goat', label: t.goat, side: view.goat },
     ].map((entry) => {
       const { readings, worst } = readSide(entry.side, t)
       return { ...entry, readings, worst, tone: (worst >= HOT_PERCENT ? 'hot' : 'used') as Tone }

@@ -83,7 +83,7 @@ export function apply(ctx: any): void {
         CommandCodeCardSlot,
       )
     })
-    // Session-header usage badge (Go/GOAT quota). The runtime
+    // Session-header usage badge (GOAT quota). The runtime
     // injects the projection/session hooks as props, so this wrapper forwards
     // them and supplies only the locale-resolved strings.
     const UsageBadgeSlot = (props: UsageBadgeProps): React.JSX.Element => {
