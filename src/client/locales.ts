@@ -37,9 +37,7 @@ export type LocaleKey =
   | 'hideModel'
   | 'showModel'
   // usage badge
-  | 'usageGo'
   | 'usageGoat'
-  | 'usageFree'
   | 'usageWindow5h'
   | 'usageWindowWeek'
   | 'usageWindowMonth'
@@ -83,9 +81,7 @@ export const EN_LOCALES: Record<LocaleKey, string> = {
   modelVisibility: 'Model visibility',
   hideModel: 'Hide',
   showModel: 'Show',
-  usageGo: 'Go',
   usageGoat: 'GOAT',
-  usageFree: 'Free',
   usageWindow5h: '5h',
   usageWindowWeek: 'week',
   usageWindowMonth: 'month',
@@ -130,9 +126,7 @@ export const JA_LOCALES: Record<LocaleKey, string> = {
   modelVisibility: 'モデルの表示',
   hideModel: '非表示',
   showModel: '表示',
-  usageGo: 'Go',
   usageGoat: 'GOAT',
-  usageFree: 'Free',
   usageWindow5h: '5h',
   usageWindowWeek: '週',
   usageWindowMonth: '月',

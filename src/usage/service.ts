@@ -1,49 +1,22 @@
 /**
- * Host half of the usage-failover unit: quota fetch, projection, pre-step guard.
+ * Host half of the quota projection: GOAT quota fetch and the session
+ * projection behind the header badge and the `get_usage` tool.
+ * There is no automatic route switching.
  *
  * @module dsh-commandcode-goat-provider/usage/service
  */
 
 import { z as zod } from 'zod'
 import type { Context } from '@deepseek-ai/cordis'
-import z from '@deepseek-ai/schemastery'
+import type { PreStepDecision } from '@deepseek-ai/dsh-agent'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment'
-import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
-import type {} from '@deepseek-ai/dsh-session-projection'
-import { createUserMessage, type ContextFormed, type ReasoningEffortId } from '@deepseek-ai/dsh-llm'
-import type {} from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-session-projection/types'
-import { fetchGoUsage, fetchGoatUsage, maxPercent, type UsageSnapshot } from './fetch.ts'
-import type { UsageFailoverView as SharedView } from './view.ts'
-import {
-  decideFailover,
-  decideOutageFailover,
-  DEFAULT_FREE_MODEL,
-  FAILOVER_ROUTES,
-  isUnavailableFailure,
-  sideOf,
-  type FailoverSide,
-} from './failover.ts'
-import { modelSupportsEffort } from '../catalog/data.ts'
+import { fetchGoatUsage, type UsageSnapshot } from './fetch.ts'
+import type { UsageQuotaView } from './view.ts'
 
-
-/** Cordis plugin name used by loader diagnostics. */
-export const usageServiceName = 'usage-failover'
-
-// 0.1.7 dropped the shared catch-all `plugin` source kind: every producer
-// declares its own entry in the merge-extensible map (see plan-mode).
-declare module '@deepseek-ai/dsh-llm' {
-  interface MessageSourceMap {
-    'llm-commandcode-goat': { kind: 'llm-commandcode-goat' } & ContextFormed
-  }
-}
-
-/** The agent registry that owns pre-step processing. */
-export const usageServiceInject = ['agents', 'sessionProjections', 'agentDefaultModel']
-
-/** Client-visible projection value: quota for both sides plus failover state. */
-export type UsageFailoverView = SharedView
+/** Re-exported view type for consumers of this unit. */
+export type { UsageQuotaView }
 
 const windowSliceSchema = zod.object({
   used: zod.number(),
@@ -59,122 +32,54 @@ const snapshotSchema = zod.object({
   fetchedAt: zod.number(),
 })
 
-const viewSchema: zod.ZodType<UsageFailoverView> = zod.object({
-  go: snapshotSchema.nullable(),
+const viewSchema: zod.ZodType<UsageQuotaView> = zod.object({
   goat: snapshotSchema.nullable(),
-  enabled: zod.boolean(),
-  lastSwitch: zod.object({
-    from: zod.enum(['go', 'goat', 'free']),
-    to: zod.enum(['go', 'goat', 'free']),
-    usagePct: zod.number(),
-    at: zod.number(),
-    reason: zod.enum(['usage', 'error']).optional(),
-    detail: zod.string().optional(),
-  }).optional(),
 })
 
 declare module '@deepseek-ai/dsh-session-projection/types' {
   interface SessionProjectionMap {
-    /** Provider quota snapshots plus usage-failover state. */
-    usageFailover: UsageFailoverView
+    /** GOAT quota snapshot (key `usageFailover` kept so stored projection caches load). */
+    usageFailover: UsageQuotaView
   }
   interface SessionProjectionStateMap {
     /** Host fold state mirrors the view (recomputed per admitted event). */
-    usageFailover: UsageFailoverView
+    usageFailover: UsageQuotaView
   }
 }
 
-/** Failover automation settings. */
-export interface UsageFailoverConfig {
-  /** Master switch for automatic switching (default true). */
-  enabled?: boolean
-  /** Usage percent that triggers failover (default 80). */
-  threshold?: number
-  /** Usage percent that triggers fallback to free model (default 90). */
-  freeThreshold?: number
+/** Quota projection settings. */
+export interface UsageQuotaConfig {
   /** Minimum ms between quota refetches (default 60000). */
   refreshIntervalMs?: number
-  /** How long a failed side stays disqualified as a failover target (default 120000). */
-  outageCooldownMs?: number
-  /** Whether to fallback to the free model when both primary sides are hot or failed (default true). */
-  fallbackToFree?: boolean
-  /** Model id on commandcode-goat for free fallback (default 'poolside/laguna-s-2.1-free'). */
-  freeModel?: string
 }
 
-/** Schemastery validation for the failover settings section. */
-export const UsageFailoverConfigSchema: z<UsageFailoverConfig> = z.object({
-  enabled: z.boolean().default(true),
-  threshold: z.number().min(1).max(100).default(80),
-  freeThreshold: z.number().min(1).max(100).default(90),
-  refreshIntervalMs: z.number().step(1).min(0).default(60000),
-  outageCooldownMs: z.number().step(1).min(0).default(120000),
-  fallbackToFree: z.boolean().default(false),
-  freeModel: z.string().default(DEFAULT_FREE_MODEL),
-})
-
-const NS = 'usage-failover'
+const DEFAULT_REFRESH_INTERVAL_MS = 60_000
 
 interface Live {
-  go: UsageSnapshot | null
   goat: UsageSnapshot | null
   lastFetchAt: number
-  lastSwitch: UsageFailoverView['lastSwitch']
-  switching: boolean
-  /** When each side last failed as unavailable; a recent failure disqualifies it as a target. */
-  outageAt: Record<FailoverSide, number>
 }
-
-/** Route a running Agent's next request must take when no live selection ref is reachable. */
-interface InflightRoute {
-  provider: string
-  model: string
-  reasoningEffort?: ReasoningEffortId
-}
-
-const fmtPct = (v: number): string => `${Math.round(v)}%`
 
 /**
- * Register the usage projection, quota fetcher, and pre-step failover guard.
+ * Register the GOAT quota projection and its pre-step refresh.
  * @param ctx - plugin context; listeners dispose with it.
- * @param config - failover settings bound to the settings section.
+ * @param config - projection settings.
  */
-export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}): void {
-  let current: () => UsageFailoverConfig = () => config
-  const live: Live = {
-    go: null,
-    goat: null,
-    lastFetchAt: 0,
-    lastSwitch: undefined,
-    switching: false,
-    outageAt: { go: 0, goat: 0, free: 0 },
-  }
+export function applyUsageService(ctx: Context, config: UsageQuotaConfig = {}): void {
+  const live: Live = { goat: null, lastFetchAt: 0 }
+  const refreshMs = config.refreshIntervalMs ?? DEFAULT_REFRESH_INTERVAL_MS
 
-  const getConfig = (): Required<UsageFailoverConfig> => ({
-    enabled: current().enabled ?? true,
-    threshold: current().threshold ?? 80,
-    freeThreshold: current().freeThreshold ?? 90,
-    refreshIntervalMs: current().refreshIntervalMs ?? 60000,
-    outageCooldownMs: current().outageCooldownMs ?? 120000,
-    fallbackToFree: current().fallbackToFree ?? false,
-    freeModel: current().freeModel ?? DEFAULT_FREE_MODEL,
-  })
-
-  const buildView = (): UsageFailoverView => {
-    const base: UsageFailoverView = { go: live.go, goat: live.goat, enabled: getConfig().enabled }
-    if (live.lastSwitch !== undefined) base.lastSwitch = live.lastSwitch
-    return base
-  }
+  const buildView = (): UsageQuotaView => ({ goat: live.goat });
 
   (ctx as unknown as { sessionProjections: { register: (d: unknown) => void } }).sessionProjections.register({
     key: 'usageFailover',
     stateVersion: 1,
     stateSchema: viewSchema,
-    init: () => ({ go: null, goat: null, enabled: true }),
+    init: () => ({ goat: null }),
     apply: () => buildView(),
     wire: {
       viewSchema,
-      view: (state: unknown) => state as UsageFailoverView,
+      view: (state: unknown) => state as UsageQuotaView,
     },
   })
 
@@ -184,7 +89,7 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
    * A headless host (systemd, no shell rc) has no key in its environment, so
    * the managed store is what makes quota reachable there at all; a launcher
    * that supplies the key as a launch-environment layer must count too, or the
-   * adapter authenticates while the quota guard sees nothing and never fails over.
+   * adapter authenticates while the quota guard sees nothing.
    */
   const resolveKey = async (ref: string, envName: string): Promise<string | undefined> => {
     try {
@@ -202,308 +107,40 @@ export function applyUsageService(ctx: Context, config: UsageFailoverConfig = {}
     return direct || undefined
   }
 
-  const goKey = (): Promise<string | undefined> => resolveKey('OPENCODE_GO_API_KEY', 'OPENCODE_GO_API_KEY')
-
   const goatKey = (): Promise<string | undefined> => resolveKey('COMMANDCODE_API_KEY', 'COMMANDCODE_API_KEY')
 
-  /** Refresh both quota snapshots unless the cache is still fresh. */
+  /** Refresh the GOAT quota snapshot unless the cache is still fresh. */
   const refresh = async (force = false): Promise<void> => {
-    const { refreshIntervalMs } = getConfig()
     const now = Date.now()
-    if (!force && refreshIntervalMs > 0 && now - live.lastFetchAt < refreshIntervalMs) return
-    const [go, goat] = await Promise.all([
-      (async () => {
-        const key = await goKey()
-        return key ? fetchGoUsage(key) : null
-      })(),
-      (async () => {
-        const key = await goatKey()
-        return key ? fetchGoatUsage(key) : null
-      })(),
-    ])
-    if (go) live.go = go
+    if (!force && refreshMs > 0 && now - live.lastFetchAt < refreshMs) return
+    const key = await goatKey()
+    const goat = key ? await fetchGoatUsage(key) : null
     if (goat) live.goat = goat
     // Nothing fetched means nothing to cache. The warmup below runs at load time,
     // before `credentials-local` has finished reading its file, so `lastFetchAt`
     // must stay "never" and let the next pre-step resolve again — otherwise the
-    // pair reads as `no-usage` for a whole `refreshIntervalMs`, and a headless run
-    // shorter than that interval never even evaluates a switch.
-    live.lastFetchAt = go || goat ? now : 0
+    // snapshot reads as missing for a whole `refreshIntervalMs`.
+    live.lastFetchAt = goat ? now : 0
   }
 
-  const currentRoute = (agent: Agent): { provider: string; model: string; reasoningEffort?: string } => {
-    // The session's assembled selection is the source of truth for routing.
-    const anyAgent = agent as unknown as {
-      session?: {
-        requestHeader?: () =>
-          | { config?: { provider?: string; model?: string; reasoningEffort?: string } }
-          | undefined
-      }
-    }
-    const header = anyAgent.session?.requestHeader?.()?.config
-    if (header?.provider && header?.model) {
-      return {
-        provider: header.provider,
-        model: header.model,
-        ...(header.reasoningEffort === undefined ? {} : { reasoningEffort: header.reasoningEffort }),
-      }
-    }
-    const defaults = (ctx as unknown as { get?: (k: string) => unknown }).get?.('agentDefaultModel') as
-      | { currentSelection?: () => { provider: string; model: string; reasoningEffort?: string } }
-      | undefined
-    const fallback = defaults?.currentSelection?.() ?? { provider: '', model: '' }
-    return {
-      provider: fallback.provider,
-      model: fallback.model,
-      ...(fallback.reasoningEffort === undefined ? {} : { reasoningEffort: fallback.reasoningEffort }),
-    }
-  }
-
-  const notice = (text: string) =>
-    createUserMessage({
-      content: [{ type: 'text' as const, text }],
-      source: { kind: 'llm-commandcode-goat' as const, form: 'notice', summary: text },
-    })
-
-  /** Route each running Agent's next request must take while its live ref is out of reach. */
-  const inflight = new WeakMap<Agent, InflightRoute>()
-
-  const routeTo = (target: { provider: string; model: string }, reasoningEffort: string | undefined): InflightRoute => ({
-    provider: target.provider,
-    model: target.model,
-    ...(reasoningEffort === undefined ? {} : { reasoningEffort: reasoningEffort as ReasoningEffortId }),
-  })
-
-  /**
-   * Queue one pair switch for a running Agent. A web host moves this Session
-   * through `sessionController.selectModel`; a headless host has no
-   * session-controller (it waits for web-only services) and keeps the runner's
-   * `ModelSelectionRef` private, so the switch is saved as the default for the
-   * next Agent *and* queued for this Agent's next request: the route leaves the
-   * hot side inside the current run instead of only on the next one.
-   * `already-default` reports a default that is already the target, which is how
-   * a repeat is recognized — the notice stops, the queued route stays.
-   */
-  const switchRoute = async (
-    agent: Agent,
-    target: { provider: string; model: string },
-    reasoningEffort: string | undefined,
-  ): Promise<'session' | 'inflight' | 'already-default'> => {
-    const selection = routeTo(target, reasoningEffort)
-    const sessions = (ctx as unknown as { get?: (k: string) => unknown }).get?.('sessionController') as
-      | { selectModel?: (request: unknown) => Promise<unknown> }
-      | undefined
-    const sessionId = (agent as unknown as { session?: { id?: string } }).session?.id
-    if (typeof sessions?.selectModel === 'function' && sessionId !== undefined) {
-      await sessions.selectModel({ sessionId, ...selection })
-      return 'session'
-    }
-    const defaults = (ctx as unknown as { get?: (k: string) => unknown }).get?.('agentDefaultModel') as
-      | {
-        currentSelection?: () => { provider: string; model: string }
-        saveSelection?: (next: unknown) => Promise<void>
-      }
-      | undefined
-    if (typeof defaults?.saveSelection !== 'function') {
-      throw new Error(
-        'neither sessionController.selectModel nor agentDefaultModel.saveSelection is available',
-      )
-    }
-    const current = defaults.currentSelection?.()
-    const already = current?.provider === target.provider && current.model === target.model
-    if (!already) await defaults.saveSelection(selection)
-    inflight.set(agent, selection)
-    return already ? 'already-default' : 'inflight'
-  }
-
-  /**
-   * Apply the queued route at the request waterfall the runner's own
-   * `installModelSelection` listener rides, so a headless switch is the final
-   * word on the next request instead of being rewritten back by that private,
-   * never-updated ref. Keyed by the Agent, so concurrent runs never share one.
-   */
-  ctx.on(
-    'agent/request',
-    async ({ agent }, next) => {
-      const resolved = await next()
-      const target = inflight.get(agent)
-      if (target === undefined) return resolved
-      if (resolved.provider === target.provider && resolved.model === target.model) {
-        // The logged request header now carries the queued route; stop forcing it.
-        inflight.delete(agent)
-        return resolved
-      }
-      const { reasoningEffort: _inherited, ...rest } = resolved
-      return {
-        ...rest,
-        provider: target.provider,
-        model: target.model,
-        ...(target.reasoningEffort === undefined ? {} : { reasoningEffort: target.reasoningEffort }),
-      }
-    },
-    { prepend: true },
-  )
-
-  const targetRouteOf = (side: FailoverSide): { provider: string; model: string } => {
-    if (side === 'free') {
-      return { provider: 'commandcode-goat', model: getConfig().freeModel }
-    }
-    return FAILOVER_ROUTES[side]
-  }
-
+  // Keep the quota fresh for the header badge and `get_usage`.
   ctx.on(
     'agent/pre-step',
-    async ({ agent, signal }, next): Promise<PreStepDecision> => {
+    async ({ signal }, next): Promise<PreStepDecision> => {
       const decision = await next()
       if (decision.kind === 'reject' || signal.aborted) return decision
       try {
-        // Refresh even when the automation is off: the Usage card reads these
-        // snapshots and must stay live while switching is delegated to jev-router.
         await refresh()
       } catch {
-        return decision
+        // A stale snapshot beats failing the turn; the next pre-step retries.
       }
-      const { enabled, threshold, freeThreshold, fallbackToFree, freeModel } = getConfig()
-      if (!enabled || live.switching) return decision
-      const route = currentRoute(agent)
-      const active = sideOf(route.provider, route.model, freeModel)
-      const outcome = decideFailover(active, { go: live.go, goat: live.goat }, threshold, {
-        fallbackToFree,
-        freeThreshold,
-      })
-      if (outcome.action === 'stay') return decision
-      if (outcome.action === 'hold-both-hot') {
-        return {
-          ...decision,
-          messages: [
-            ...decision.messages,
-            notice(
-              `usage ${fmtPct(outcome.usagePct)} ≥ ${threshold}% だが代替側も ${fmtPct(outcome.altPct)} のため切替せず継続`,
-            ),
-          ],
-        }
-      }
-      const target = targetRouteOf(outcome.to)
-      live.switching = true
-      try {
-        // Web: session-local switch through the same path the /model picker
-        // uses. Headless: the saved default plus a queued override, so this run
-        // leaves the hot route at its next request and the next Agent starts there.
-        const targetEffort = modelSupportsEffort(target) ? route.reasoningEffort : undefined
-        const applied = await switchRoute(agent, target, targetEffort)
-        if (applied === 'already-default') return decision
-        live.lastSwitch = { from: active as FailoverSide, to: outcome.to, usagePct: outcome.usagePct, at: Date.now() }
-        let switchNotice: string
-        if (outcome.to === 'free') {
-          switchNotice = `usage ${fmtPct(outcome.usagePct)} ≥ ${freeThreshold}% かつ代替側も ${fmtPct(outcome.altPct)} ≥ ${freeThreshold}% のため Free モデル (${target.provider}/${target.model}) に自動切替`
-        } else if (active === 'free') {
-          switchNotice = `主力側 (${target.provider}/${target.model}) の usage が回復したため自動復帰（代替側 ${fmtPct(outcome.altPct)}）`
-        } else {
-          switchNotice = `usage ${fmtPct(outcome.usagePct)} ≥ ${threshold}% のため ${target.provider}/${target.model} に自動切替（代替側 ${fmtPct(outcome.altPct)}）`
-        }
-        return {
-          ...decision,
-          messages: [
-            ...decision.messages,
-            notice(switchNotice),
-          ],
-        }
-      } catch (error) {
-        // A refused switch must reach the operator: silently staying put looks
-        // identical to "quota is fine" and hides a broken auto-switch.
-        ctx.logger.warn(
-          `usage-failover: automatic switch to ${target.provider}/${target.model} failed; staying on the current route: ${String(error)}`,
-        )
-        return decision
-      } finally {
-        live.switching = false
-      }
+      return decision
     },
-    { prepend: true },
   )
 
-  /**
-   * Move the session off a route that cannot serve requests. This listener is
-   * outermost on the waterfall, so it delegates first and only takes over once
-   * `llm-retry` has spent the provider's retry budget: a transient failure is
-   * still absorbed in place, and an outage costs one provider's worth of
-   * backoff before the other side gets the request.
-   */
-  ctx.on(
-    'agent/request-error',
-    async ({ agent, failure, signal }, next) => {
-      const decision = await next()
-      // A downstream owner already scheduled a retry, or the turn was cancelled.
-      if (decision?.kind === 'retry' || signal.aborted) return decision
-      const { enabled, threshold, freeThreshold, outageCooldownMs, fallbackToFree, freeModel } = getConfig()
-      if (!enabled || !isUnavailableFailure(failure)) return decision
-      const route = currentRoute(agent)
-      const active = sideOf(route.provider, route.model, freeModel)
-      const alt: FailoverSide | null = active === 'go' ? 'goat' : active === 'goat' ? 'go' : null
-      const outcome = decideOutageFailover(active, {
-        recentlyFailed: alt === null ? false : Date.now() - (live.outageAt[alt] ?? 0) < outageCooldownMs,
-        // Quota is a hint here, not a gate: a stale snapshot must never keep the
-        // session on a route that is refusing requests.
-        usagePct: alt !== null && live[alt] ? maxPercent(live[alt]) : null,
-      }, threshold, { fallbackToFree, freeThreshold })
-      if (outcome.action === 'stay' || active === null) return decision
-
-      const from = targetRouteOf(active)
-      const target = targetRouteOf(outcome.to)
-      const detail = failure.status === undefined ? failure.code : `${failure.code} (${failure.status})`
-      if (outcome.action === 'hold') {
-        agent.inject(notice(
-          `${from.provider}/${from.model} が ${detail} で失敗したが${outcome.reason === 'alt-hot' ? '代替側の usage が高い' : '代替側も直近で失敗している'}ため切替せず継続`,
-        ))
-        return decision
-      }
-
-      // The retry happens inside this step, where the session's own selection may
-      // not be re-read, so the queued route is what actually moves the request.
-      const targetEffort = modelSupportsEffort(target) ? route.reasoningEffort : undefined
-      inflight.set(agent, routeTo(target, targetEffort))
-      live.outageAt[active] = Date.now()
-      try {
-        await switchRoute(agent, target, targetEffort)
-      } catch (error) {
-        // The queued route still moves this Agent's next request; only the
-        // durable switch failed, and that must reach the operator.
-        ctx.logger.warn(
-          `usage-failover: outage switch to ${target.provider}/${target.model} failed; retrying on the queued route: ${String(error)}`,
-        )
-      }
-      live.lastSwitch = {
-        from: active,
-        to: outcome.to,
-        usagePct: active !== 'free' && live[active] ? maxPercent(live[active]!) : 0,
-        at: Date.now(),
-        reason: 'error',
-        detail,
-      }
-      const outageNotice = outcome.to === 'free'
-        ? `${from.provider}/${from.model} が ${detail} で失敗し代替側も利用不可のため Free モデル (${target.provider}/${target.model}) に自動切替`
-        : `${from.provider}/${from.model} が ${detail} で失敗したため ${target.provider}/${target.model} に自動切替`
-      agent.inject(notice(outageNotice))
-      return { kind: 'retry' }
-    },
-    { prepend: true },
-  )
-
-  // Keep the pair warm so the first prompt of a session already has numbers.
+  // Keep it warm so the first prompt of a session already has numbers.
   ctx.effect(() => {
     void refresh(true).catch(() => {})
     return () => {}
-  }, 'usage-failover: warmup')
-
-  ctx.inject(['settings'], (settingsCtx: { settings: unknown }) => {
-    const settings = settingsCtx.settings as unknown as {
-      installSection: (owner: unknown, ns: string, schema: unknown, entry: unknown, hooks: Record<string, unknown>) => void
-    }
-    settings.installSection(ctx, NS, UsageFailoverConfigSchema, config, {
-      setSource: (source: unknown) => {
-        current = source as () => UsageFailoverConfig
-      },
-      onChange: () => {},
-    })
-  })
+  }, 'usage-quota: warmup')
 }

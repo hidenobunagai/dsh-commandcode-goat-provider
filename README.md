@@ -29,24 +29,9 @@ The bundle is configured under the `llm-commandcode-goat` settings namespace:
 | `enableZdr` | `boolean` | `false` | When enabled, requests Zero Data Retention from supported providers. |
 | `protocolOverrides` | `Array<{ model, protocol }>` | `[]` | Explicit wire protocol mappings (`openai` or `anthropic`). |
 
-## Quota & outage auto-switch
+## Quota badge
 
-The DeepSeek V4.1 Flash pair (`opencode-go-v41/deepseek-flash` ⇄ `commandcode-goat/deepseek/deepseek-v4.1-flash`) switches automatically, and the session-header badge shows both sides' quota. Configured under the `usage-failover` namespace:
-
-| Field | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `enabled` | `boolean` | `true` | Master switch for all triggers. |
-| `threshold` | `number` | `80` | Usage percent that triggers a quota switch between the primary pair. |
-| `freeThreshold` | `number` | `90` | Usage percent that triggers fallback to the free model when both sides are exhausted. |
-| `refreshIntervalMs` | `number` | `60000` | Minimum ms between quota refetches. |
-| `outageCooldownMs` | `number` | `120000` | How long a failed side stays disqualified as a failover target. |
-| `fallbackToFree` | `boolean` | `true` | Fall back to a free model when both sides are over quota or unusable. |
-| `freeModel` | `string` | `'poolside/laguna-s-2.1-free'` | Model id on `commandcode-goat` for free fallback. |
-
-- **Quota trigger** — at `agent/pre-step`, when the active side's peak window reaches `threshold` (80%) and the alternative is below it. If both sides are at or above `threshold`, the system holds or balances between them until both reach `freeThreshold` (90%), at which point it falls back to `freeModel` (`poolside/laguna-s-2.1-free`), and automatically recovers to a primary side once quota cools down below `freeThreshold`.
-- **Outage trigger** — at `agent/request-error`, after the failing provider's own retry budget is spent (`llm-retry` runs first, this listener is outermost). The switch is queued for the current run's next request, so the retry leaves the failing route inside the same step. If the alternative route is also hot (>= `freeThreshold`) or recently failed, it falls back to `freeModel`.
-- `AUTH`, `PLAN_REQUIRED`, `QUOTA`, `RATE_LIMIT`, `SERVER`, `TIMEOUT`, `TRANSPORT`, `NETWORK`, `PI_AI_ERROR`, `EMPTY_RESPONSE` and HTTP 408/429/5xx count as an unusable route. `ABORTED`, `CONTEXT_WINDOW_EXCEEDED`, and `INVALID_REQUEST` do not: they repeat identically on the other side.
-- Two guards stop the pair from trading the session: a side that failed inside `outageCooldownMs` is not a target, and a target already at `threshold` is left alone (triggering free fallback instead).
+The session-header badge and the `get_usage` tool show the CommandCode GOAT quota (5-hour / weekly / monthly windows). The snapshot refreshes on each agent step (at most once per `refreshIntervalMs`, default 60000 ms). There is **no automatic switching**: neither quota pressure nor outages change the active route.
 
 ## Architecture & Integration
 

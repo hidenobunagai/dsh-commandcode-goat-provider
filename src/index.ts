@@ -29,7 +29,7 @@ import {
 import { CommandCodeApiClient } from './api/client.ts'
 
 export const name = 'llm-commandcode-goat'
-export const inject = ['llm', 'agents', 'sessionProjections', 'agentDefaultModel']
+export const inject = ['llm', 'agents', 'sessionProjections']
 export { Config }
 
 const NS = 'llm-commandcode-goat'
@@ -205,8 +205,8 @@ export function apply(ctx: Context, config: CommandCodeConfig): void {
     child.effect(() => child.settings.configure({ auto: false }, ctx.fiber))
   })
 
-  // Usage-failover unit: quota projection + pre-step auto-switch + tools.
-  // Mounted unconditionally; the unit no-ops when neither pair key resolves.
+  // Quota projection: GOAT snapshot for the header badge + get_usage tool.
+  // Mounted unconditionally; the unit no-ops when no GOAT key resolves.
   applyUsageService(ctx, {})
   registerUsageTools(ctx)
 }

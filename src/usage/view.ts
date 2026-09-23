@@ -1,5 +1,5 @@
 /**
- * Shared view contract for the usage-failover projection (host ↔ browser).
+ * Shared view contract for the quota projection (host ↔ browser).
  *
  * @module dsh-commandcode-goat-provider/usage/view
  */
@@ -20,19 +20,7 @@ export interface UsageSideView {
   fetchedAt: number
 }
 
-/** Client-visible usage-failover projection value. */
-export interface UsageFailoverView {
-  go: UsageSideView | null
+/** Client-visible quota projection value: GOAT only (no Go side, no failover state). */
+export interface UsageQuotaView {
   goat: UsageSideView | null
-  enabled: boolean
-  lastSwitch?: {
-    from: 'go' | 'goat' | 'free'
-    to: 'go' | 'goat' | 'free'
-    usagePct: number
-    at: number
-    /** What fired the switch; absent means a quota switch. */
-    reason?: 'usage' | 'error'
-    /** The failure behind an error switch, e.g. `SERVER (503)`. */
-    detail?: string
-  }
 }

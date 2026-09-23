@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { UsageFailoverView, UsageSideView, UsageWindowView } from '../usage/view.ts'
+import type { UsageQuotaView, UsageSideView, UsageWindowView } from '../usage/view.ts'
 import css from './UsageBadge.module.css'
 
 /**
@@ -10,9 +10,7 @@ const HOT_PERCENT = 80
 
 /** Compact badge strings, resolvable against the plugin locale seat. */
 export interface UsageBadgeText {
-  go: string
   goat: string
-  free: string
   window5h: string
   windowWeek: string
   windowMonth: string
@@ -22,9 +20,7 @@ export interface UsageBadgeText {
 
 /** English fallback so the badge still renders if the seat is missing a key. */
 const FALLBACK: UsageBadgeText = {
-  go: 'Go',
   goat: 'GOAT',
-  free: 'Free',
   window5h: '5h',
   windowWeek: 'week',
   windowMonth: 'month',
@@ -145,7 +141,7 @@ function WindowRow({ reading }: { reading: WindowReading }): React.JSX.Element {
 export function UsageBadge({ useProjection, useSession, t = FALLBACK }: UsageBadgeProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLSpanElement | null>(null)
-  const view = useProjection('usageFailover', (v) => v as UsageFailoverView | undefined)
+  const view = useProjection('usageFailover', (v) => v as UsageQuotaView | undefined)
   const openState = useSession?.((s) => s.openState) ?? 'open'
 
   const model = useMemo(() => {

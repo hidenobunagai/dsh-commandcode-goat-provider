@@ -1,5 +1,5 @@
 /**
- * Provider quota snapshots behind the usage-failover pair.
+ * Provider quota snapshot behind the GOAT quota badge.
  *
  * @module dsh-commandcode-goat-provider/usage/fetch
  */
@@ -29,60 +29,6 @@ const num = (v: unknown, fb = 0): number =>
 
 const clampPct = (used: number, cap: number): number =>
   cap > 0 ? Math.min(100, Math.max(0, (used / cap) * 100)) : 0
-
-// --- OpenCode Go: percent API ---------------------------------------------
-
-interface GoSlice { percent?: number; resetsAt?: string }
-interface GoPayload { usage?: { rolling?: GoSlice; weekly?: GoSlice; monthly?: GoSlice } }
-
-const GO_MONTHLY_CAP = 100
-
-function goSlice(s: GoSlice | undefined, cap: number): WindowSlice {
-  const percent = typeof s?.percent === 'number' ? s.percent : 0
-  const used = (Math.min(100, Math.max(0, percent)) / 100) * cap
-  const resetAt = s?.resetsAt !== undefined ? Date.parse(s.resetsAt) : undefined
-  return {
-    used,
-    cap,
-    percent: clampPct(used, cap),
-    ...(resetAt !== undefined && Number.isFinite(resetAt) ? { resetAt } : {}),
-  }
-}
-
-function parseGoPayload(payload: unknown, caps: { fiveHour: number; weekly: number }): UsageSnapshot {
-  const u = (payload as GoPayload | null)?.usage ?? {}
-  const fh = goSlice(u.rolling, caps.fiveHour)
-  // Go's rolling cap is authoritative when present; weekly/monthly are percents of 100.
-  const wk = goSlice(u.weekly, caps.weekly)
-  const mo = goSlice(u.monthly, GO_MONTHLY_CAP)
-  return { fiveHour: fh, weekly: wk, monthly: mo, fetchedAt: Date.now() }
-}
-
-/**
- * Fetch an OpenCode Go quota snapshot (percent API).
- * @param apiKey - OpenCode Go API key.
- * @param opts - endpoint/timeout overrides and fetch impl.
- * @returns snapshot, or null when the endpoint is unreachable.
- */
-export async function fetchGoUsage(
-  apiKey: string,
-  opts?: { endpoint?: string; timeoutMs?: number; fetchImpl?: typeof fetch },
-): Promise<UsageSnapshot | null> {
-  const endpoint = opts?.endpoint ?? 'https://opencode.ai/zen/go/v1/usage'
-  const fetcher = opts?.fetchImpl ?? globalThis.fetch
-  try {
-    const res = await fetcher(endpoint, {
-      headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
-      signal: AbortSignal.timeout(opts?.timeoutMs ?? 8000),
-    })
-    if (!res.ok) return null
-    const payload = (await res.json()) as unknown
-    // Discover caps from a sibling credits-style body when embedded; else percent-of-100.
-    return parseGoPayload(payload, { fiveHour: 100, weekly: 100 })
-  } catch {
-    return null
-  }
-}
 
 // --- CommandCode GOAT: credits API (cf. berkeduruu/commandcode-goat-usagebar) ---
 
@@ -143,9 +89,4 @@ export async function fetchGoatUsage(
   } catch {
     return null
   }
-}
-
-/** Highest usage percent across the three windows. */
-export function maxPercent(s: UsageSnapshot): number {
-  return Math.max(s.fiveHour.percent, s.weekly.percent, s.monthly.percent)
 }

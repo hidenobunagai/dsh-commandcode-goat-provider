@@ -22,9 +22,7 @@ const NS = 'llm-commandcode-goat'
 
 /** Badge locale key pairs, so one list feeds every `t` field. */
 const BADGE_TEXT_KEYS: Record<keyof UsageBadgeText, LocaleKey> = {
-  go: 'usageGo',
   goat: 'usageGoat',
-  free: 'usageFree',
   window5h: 'usageWindow5h',
   windowWeek: 'usageWindowWeek',
   windowMonth: 'usageWindowMonth',
