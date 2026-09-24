@@ -1,6 +1,6 @@
-/* Session-header quota badge. A compact Go/GOAT meter pair whose click-open
-   panel follows the composer ContextMeter surface (menu r12, prominent
-   elevation, 4px bars) so the two header readouts read as one family.
+/* Session-header quota badge. A compact GOAT meter whose click-open panel
+   follows the composer ContextMeter surface (menu r12, prominent elevation,
+   4px bars) so the two header readouts read as one family.
    Tokens only — no color literals, so light/dark and themes follow the host. */
 
 .root {
@@ -100,13 +100,15 @@
 
 /* ── panel ──────────────────────────────────────────────────────────────── */
 
+/* Portaled to document.body and placed by useAnchoredPosition, so `left`/`top`
+   arrive inline from the trigger's viewport rect with a 12px edge margin —
+   a relative panel anchored `right: 0` clipped off-screen when the badge sat
+   near the left edge of a narrow header. */
 .panel {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 100;
+  position: fixed;
+  z-index: 1100;
   box-sizing: border-box;
-  width: 264px;
+  width: min(264px, calc(100vw - 24px));
   padding: 12px;
   border: 0;
   border-radius: 12px;
@@ -221,24 +223,11 @@
   }
 }
 
-/* Narrow headers drop the countdown column before anything else gives way. */
-@media (max-width: 900px) {
-  .rowReset {
-    display: none;
-  }
-}
-
-/* Phone-width header: the badge can sit far enough left that the 264px panel
-   would clip the viewport. The panel stays anchored to the badge's right edge
-   and its width is capped to the remaining viewport, so the panel always fits
-   on screen even though it then extends right of the badge itself. */
+/* Phone-width header: tighter trigger gap; the panel width is already capped
+   to the viewport by the base rule and clamped into place by the anchor hook. */
 @media (max-width: 720px) {
   .trigger {
     gap: 8px;
-  }
-
-  .panel {
-    width: min(264px, calc(100vw - 24px));
   }
 }
 

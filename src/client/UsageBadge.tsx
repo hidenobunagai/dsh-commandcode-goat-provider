@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useAnchoredPosition, useDismissOnOutsidePointer } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { UsageQuotaView, UsageSideView, UsageWindowView } from '../usage/view.ts'
 import css from './UsageBadge.module.css'
 
@@ -141,6 +143,7 @@ function WindowRow({ reading }: { reading: WindowReading }): React.JSX.Element {
 export function UsageBadge({ useProjection, useSession, t = FALLBACK }: UsageBadgeProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLSpanElement | null>(null)
+  const panelRef = useRef<HTMLDivElement | null>(null)
   const view = useProjection('usageFailover', (v) => v as UsageQuotaView | undefined)
   const openState = useSession?.((s) => s.openState) ?? 'open'
 
@@ -159,22 +162,28 @@ export function UsageBadge({ useProjection, useSession, t = FALLBACK }: UsageBad
     }
   }, [view, t])
 
-  // Close on outside click / Escape, matching the composer meter's panel.
+  // The panel is portaled to document.body and measured from the trigger, so
+  // the viewport clamp keeps it on screen when the badge sits near the left
+  // edge (narrow/mobile headers) — a relative `right: 0` panel clipped there.
+  const position = useAnchoredPosition({
+    open,
+    anchorRef: rootRef,
+    panelRef,
+    side: 'bottom',
+    align: 'end',
+    gap: 6,
+    margin: 12,
+  })
+  useDismissOnOutsidePointer(rootRef, open, setOpen, panelRef)
+
+  // Escape closes the open panel, matching the composer meter's panel.
   useEffect(() => {
     if (!open) return
-    const onPointerDown = (e: PointerEvent): void => {
-      if (e.target instanceof Node && rootRef.current?.contains(e.target) === true) return
-      setOpen(false)
-    }
     const onKeyDown = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') setOpen(false)
     }
-    document.addEventListener('pointerdown', onPointerDown)
     document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
-    }
+    return () => { document.removeEventListener('keydown', onKeyDown) }
   }, [open])
 
   if (openState !== 'open' || !model) return null
@@ -201,8 +210,14 @@ export function UsageBadge({ useProjection, useSession, t = FALLBACK }: UsageBad
         ))}
         {model.hot ? <span className={css.warn} aria-hidden="true">⚠</span> : null}
       </button>
-      {open ? (
-        <div className={css.panel} role="dialog" aria-label={t.quota}>
+      {open && createPortal(
+        <div
+          ref={panelRef}
+          className={css.panel}
+          style={position ?? { visibility: 'hidden', left: 0, top: 0 }}
+          role="dialog"
+          aria-label={t.quota}
+        >
           {model.sides.map((side) => (
             <section key={side.key} className={css.group}>
               <h4 className={css.groupTitle}>
@@ -220,8 +235,9 @@ export function UsageBadge({ useProjection, useSession, t = FALLBACK }: UsageBad
               </ul>
             </section>
           ))}
-        </div>
-      ) : null}
+        </div>,
+        document.body,
+      )}
     </span>
   )
 }
