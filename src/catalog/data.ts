@@ -73,7 +73,7 @@ export const CATALOG: readonly CatalogEntry[] = [
 
   // ── Extra known models (pricing / capabilities without "latest" flag) ──
   { id: 'Qwen/Qwen3.7-Flash', name: 'Qwen 3.7 Flash', contextWindow: 1000000, maxTokens: 65536, protocol: 'openai', modalities: ['text', 'image'], tier: 'go', label: 'Go/GOAT', inputPrice: 0.03, outputPrice: 0.13 },
-  { id: 'stepfun/Step-3.5-Flash', name: 'Step 3.5 Flash', contextWindow: 1000000, maxTokens: 65536, protocol: 'openai', modalities: ['text', 'image'], tier: 'go', label: 'Go/GOAT', intelligence: 26.5, inputPrice: 0.10, outputPrice: 0.30 },
+  { id: 'stepfun/Step-3.5-Flash', name: 'Step 3.5 Flash', contextWindow: 262144, maxTokens: 65536, protocol: 'openai', modalities: ['text', 'image'], tier: 'go', label: 'Go/GOAT', intelligence: 26.5, inputPrice: 0.10, outputPrice: 0.30 },
   { id: 'xiaomi/mimo-v2.5', name: 'MiMo V2.5', contextWindow: 1000000, maxTokens: 65536, protocol: 'openai', modalities: ['text', 'image'], tier: 'go', label: 'Go/GOAT', intelligence: 38.0, inputPrice: 0.14, outputPrice: 0.28, discount: '-98%' },
   { id: 'tencent/hy3-paid', name: 'Tencent Hy3', contextWindow: 262144, maxTokens: 65536, protocol: 'openai', modalities: ['text'], tier: 'go', label: 'Go/GOAT', intelligence: 42.2, inputPrice: 0.14, outputPrice: 0.58 },
   { id: 'Qwen/Qwen3.7-Plus', name: 'Qwen 3.7 Plus', contextWindow: 1000000, maxTokens: 65536, protocol: 'openai', modalities: ['text', 'image'], tier: 'go', label: 'Go/GOAT', intelligence: 39.4, inputPrice: 0.40, outputPrice: 1.60 },
@@ -97,6 +97,9 @@ export const CATALOG: readonly CatalogEntry[] = [
   // ── Free tier extras ───────────────────────────────────────────────
   { id: 'inclusionai/ling-3.0-flash-sante:free', name: 'Ling 3.0 Flash Sante', contextWindow: 262144, maxTokens: 65536, protocol: 'openai', modalities: ['text'], tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free', latest: true },
   { id: 'poolside/laguna-s-2.1-free', name: 'Laguna S 2.1', contextWindow: 256000, maxTokens: 32768, protocol: 'openai', modalities: ['text'], tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free' },
+  // Stealth preview: vision from commandcode.ai caps.text/vision/reasoning, $0 tiers from the
+  // space-bunny-alpha-free deal; no reasoning ladder published, so no efforts (2026-09-24).
+  { id: 'stealth/space-bunny-alpha', name: 'Space Bunny Alpha', contextWindow: 1000000, maxTokens: 65536, protocol: 'openai', modalities: ['text', 'image'], tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free' },
 
   // ── Legacy models still served by /provider/v1/models (API returns no pricing) ──
   // Pricing backfilled from last known Command Code catalog; mark as legacy tier.
