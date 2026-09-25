@@ -79,6 +79,8 @@ describe('catalog', () => {
     expect(modelSupportsEffort('inclusionai/ling-3.0-flash-sante:free')).toBe(false)
 
     // Known effort-capable models
+    expect(modelSupportsEffort('stealth/space-bunny-alpha')).toBe(true)
+    expect(modelSupportsEffort({ provider: 'commandcode-goat', model: 'stealth/space-bunny-alpha' })).toBe(true)
     expect(modelSupportsEffort('deepseek/deepseek-v4.1-flash')).toBe(true)
     expect(modelSupportsEffort({ provider: 'commandcode-goat', model: 'deepseek/deepseek-v4.1-flash' })).toBe(true)
     expect(modelSupportsEffort('gpt-5.6-luna')).toBe(true)
@@ -109,6 +111,15 @@ describe('catalog', () => {
     expect(String(resolved.reasoning?.defaultEffort)).toBe('medium')
     const plain = resolveCommandCodeModel('commandcode-goat', 'meta/muse-spark-1.3', undefined, defaultConfig)
     expect(plain.reasoning?.efforts.map((e) => String(e.id))).toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
+  })
+
+  it('declares the live-probed space-bunny-alpha effort ladder', () => {
+    // Probed 2026-09-25 against /provider/v1/chat/completions: low..max all
+    // return 200, and high/xhigh/max populate message.reasoning; an unknown
+    // value is rejected 400 with "expected one of low|medium|high|xhigh|max".
+    const resolved = resolveCommandCodeModel('commandcode-goat', 'stealth/space-bunny-alpha', undefined, defaultConfig)
+    expect(resolved.reasoning?.efforts.map((e) => String(e.id))).toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
+    expect(String(resolved.reasoning?.defaultEffort)).toBe('medium')
   })
 })
 

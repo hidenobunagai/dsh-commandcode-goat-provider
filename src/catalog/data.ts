@@ -98,8 +98,8 @@ export const CATALOG: readonly CatalogEntry[] = [
   { id: 'inclusionai/ling-3.0-flash-sante:free', name: 'Ling 3.0 Flash Sante', contextWindow: 262144, maxTokens: 65536, protocol: 'openai', modalities: ['text'], tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free', latest: true },
   { id: 'poolside/laguna-s-2.1-free', name: 'Laguna S 2.1', contextWindow: 256000, maxTokens: 32768, protocol: 'openai', modalities: ['text'], tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free' },
   // Stealth preview: vision from commandcode.ai caps.text/vision/reasoning, $0 tiers from the
-  // space-bunny-alpha-free deal; no reasoning ladder published, so no efforts (2026-09-24).
-  { id: 'stealth/space-bunny-alpha', name: 'Space Bunny Alpha', contextWindow: 1000000, maxTokens: 65536, protocol: 'openai', modalities: ['text', 'image'], tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free' },
+  // space-bunny-alpha-free deal; live probing accepts reasoning ladder low..max (2026-09-25).
+  { id: 'stealth/space-bunny-alpha', name: 'Space Bunny Alpha', contextWindow: 1000000, maxTokens: 65536, protocol: 'openai', modalities: ['text', 'image'], efforts: ['low', 'medium', 'high', 'xhigh', 'max'], defaultEffort: 'medium', tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free' },
 
   // ── Legacy models still served by /provider/v1/models (API returns no pricing) ──
   // Pricing backfilled from last known Command Code catalog; mark as legacy tier.
