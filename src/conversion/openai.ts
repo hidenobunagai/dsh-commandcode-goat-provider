@@ -82,8 +82,9 @@ export async function toOpenAiRequest(
     }
   }
 
+  const resolvedModelId = options.model === 'mimo-v2.6-flash' ? 'xiaomi/mimo-v2.6-flash' : options.model
   const request: OpenAiChatRequest = {
-    model: options.model,
+    model: resolvedModelId,
     messages,
     stream: true,
     stream_options: { include_usage: true },
