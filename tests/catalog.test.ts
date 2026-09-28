@@ -81,6 +81,8 @@ describe('catalog', () => {
     // Known effort-capable models
     expect(modelSupportsEffort('stealth/space-bunny-alpha')).toBe(true)
     expect(modelSupportsEffort({ provider: 'commandcode-goat', model: 'stealth/space-bunny-alpha' })).toBe(true)
+    expect(modelSupportsEffort('stealth/pixel-canary')).toBe(true)
+    expect(modelSupportsEffort({ provider: 'commandcode-goat', model: 'stealth/pixel-canary' })).toBe(true)
     expect(modelSupportsEffort('deepseek/deepseek-v4.1-flash')).toBe(true)
     expect(modelSupportsEffort({ provider: 'commandcode-goat', model: 'deepseek/deepseek-v4.1-flash' })).toBe(true)
     expect(modelSupportsEffort('gpt-5.6-luna')).toBe(true)
@@ -118,6 +120,15 @@ describe('catalog', () => {
     // return 200, and high/xhigh/max populate message.reasoning; an unknown
     // value is rejected 400 with "expected one of low|medium|high|xhigh|max".
     const resolved = resolveCommandCodeModel('commandcode-goat', 'stealth/space-bunny-alpha', undefined, defaultConfig)
+    expect(resolved.reasoning?.efforts.map((e) => String(e.id))).toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
+    expect(String(resolved.reasoning?.defaultEffort)).toBe('medium')
+  })
+
+  it('declares the live-probed pixel-canary effort ladder', () => {
+    // Probed 2026-09-28 against /provider/v1/chat/completions: low..max all
+    // return 200 with message.reasoning; bogus value is rejected 400
+    // with "expected one of 'low'|'medium'|'high'|'xhigh'|'max'".
+    const resolved = resolveCommandCodeModel('commandcode-goat', 'stealth/pixel-canary', undefined, defaultConfig)
     expect(resolved.reasoning?.efforts.map((e) => String(e.id))).toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
     expect(String(resolved.reasoning?.defaultEffort)).toBe('medium')
   })
