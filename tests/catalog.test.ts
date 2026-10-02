@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { defaultConfig } from '../src/config.ts'
 import {
+  CATALOG,
   FALLBACK_MODELS,
   modelSupportsEffort,
   normalizeDiscoveredModels,
@@ -81,15 +82,22 @@ describe('catalog', () => {
     // Known effort-capable models
     expect(modelSupportsEffort('stealth/space-bunny-alpha')).toBe(true)
     expect(modelSupportsEffort({ provider: 'commandcode-goat', model: 'stealth/space-bunny-alpha' })).toBe(true)
-    expect(modelSupportsEffort('stealth/pixel-canary')).toBe(true)
-    expect(modelSupportsEffort({ provider: 'commandcode-goat', model: 'stealth/pixel-canary' })).toBe(true)
     expect(modelSupportsEffort('deepseek/deepseek-v4.1-flash')).toBe(true)
     expect(modelSupportsEffort({ provider: 'commandcode-goat', model: 'deepseek/deepseek-v4.1-flash' })).toBe(true)
+    expect(modelSupportsEffort('deepseek/deepseek-v4.1-flash-fast')).toBe(true)
+    expect(modelSupportsEffort('gpt-6.1-sol')).toBe(true)
+    expect(modelSupportsEffort('claude-sonnet-5-5')).toBe(true)
+    expect(modelSupportsEffort('moonshotai/Kimi-K3')).toBe(true)
+    expect(modelSupportsEffort('moonshotai/Kimi-K2.7-Code')).toBe(true)
     expect(modelSupportsEffort('gpt-5.6-luna')).toBe(true)
     expect(modelSupportsEffort('gpt-6-luna')).toBe(true)
 
-    // Known models without efforts
-    expect(modelSupportsEffort('moonshotai/Kimi-K3')).toBe(false)
+    // Known models without efforts (researched 2026-10-02: no Reasons badge
+    // on commandcode.ai, probe confirms no reasoning — see effort-decisions)
+    expect(modelSupportsEffort('inclusionai/ling-3.1-flash:free')).toBe(false)
+    expect(modelSupportsEffort('moonshotai/Kimi-K2.5')).toBe(false)
+    expect(modelSupportsEffort('zai-org/GLM-5')).toBe(false)
+    expect(modelSupportsEffort('zai-org/GLM-5.1')).toBe(false)
 
     // External providers retain effort
     expect(modelSupportsEffort({ provider: 'opencode-go-v41', model: 'deepseek-flash' })).toBe(true)
@@ -124,13 +132,29 @@ describe('catalog', () => {
     expect(String(resolved.reasoning?.defaultEffort)).toBe('medium')
   })
 
-  it('declares the live-probed pixel-canary effort ladder', () => {
-    // Probed 2026-09-28 against /provider/v1/chat/completions: low..max all
-    // return 200 with message.reasoning; bogus value is rejected 400
-    // with "expected one of 'low'|'medium'|'high'|'xhigh'|'max'".
+  it('declares the researched v4.1-flash-fast andkimi-k3 effort ladders', () => {
+    // Researched 2026-10-02 (docs/effort-decisions.json in the VS Code repo):
+    // DeepSeek vendor docs give reasoning_effort low/high/max (gateway maps
+    // minimal/low->low, medium/high/xhigh->high, ultra/max->max); Kimi docs
+    // give kimi-k3 low/high/max, default max. Probes confirm both think by
+    // default with off rejected.
+    const fast = resolveCommandCodeModel('commandcode-goat', 'deepseek/deepseek-v4.1-flash-fast', undefined, defaultConfig)
+    expect(fast.reasoning?.efforts.map((e) => String(e.id))).toEqual(['low', 'high', 'max'])
+    expect(String(fast.reasoning?.defaultEffort)).toBe('high')
+    const k3 = resolveCommandCodeModel('commandcode-goat', 'moonshotai/Kimi-K3', undefined, defaultConfig)
+    expect(k3.reasoning?.efforts.map((e) => String(e.id))).toEqual(['low', 'high', 'max'])
+  })
+
+  it('retired pixel-canary when the stealth preview ended', () => {
+    // 2026-09-28 probe (low..max all 200 with message.reasoning) covered the
+    // preview while it ran; the gateway now answers 403 "preview ended on
+    // September 30th" and the live API no longer serves the id, so the row
+    // is dropped from the CATALOG. modelSupportsEffort falls back to true
+    // for unknown non-:free ids, so assert the catalog truth instead: the
+    // entry is gone and nothing resolves an effort ladder for it.
+    expect(CATALOG.some((e) => e.id === 'stealth/pixel-canary')).toBe(false)
     const resolved = resolveCommandCodeModel('commandcode-goat', 'stealth/pixel-canary', undefined, defaultConfig)
-    expect(resolved.reasoning?.efforts.map((e) => String(e.id))).toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
-    expect(String(resolved.reasoning?.defaultEffort)).toBe('medium')
+    expect(resolved.reasoning).toBeUndefined()
   })
 })
 
