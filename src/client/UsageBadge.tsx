@@ -72,7 +72,9 @@ const toneClass: Record<Tone, string> = {
 }
 
 /**
- * One side's windows, ordered worst-first so the number that matters leads.
+ * One side's windows in fixed shortest-to-longest order (5h, week, month), so the
+ * rows never reshuffle as the percentages change. The worst percent still drives
+ * the trigger ring, its tone, and the ⚠ marker.
  * @param side - the side's quota snapshot.
  * @param t - resolved badge strings.
  * @returns window readings plus the worst percent.
@@ -84,7 +86,7 @@ function readSide(side: UsageSideView, t: UsageBadgeText): { readings: WindowRea
     { id: 'month', label: t.windowMonth, window: side.monthly },
   ]
   const worst = Math.max(...readings.map((r) => r.window.percent))
-  return { readings: readings.sort((a, b) => b.window.percent - a.window.percent), worst }
+  return { readings, worst }
 }
 
 /**

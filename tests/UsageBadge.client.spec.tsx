@@ -46,6 +46,17 @@ describe('UsageBadge', () => {
     expect(dialog?.textContent).toContain('60%')
   })
 
+  it('keeps the window rows in 5h/week/month order regardless of percent', () => {
+    render(React.createElement(UsageBadge, { useProjection }))
+    fireEvent.click(screen.getByRole('button'))
+
+    // The monthly window leads at 60%, yet the rows stay in the fixed
+    // shortest-to-longest order instead of reshuffling by severity.
+    const labels = [...document.querySelectorAll('[role="dialog"] li')]
+      .map((row) => row.firstElementChild?.textContent)
+    expect(labels).toEqual(['5h', 'week', 'month'])
+  })
+
   it('closes the panel on Escape', () => {
     render(React.createElement(UsageBadge, { useProjection }))
     fireEvent.click(screen.getByRole('button'))
