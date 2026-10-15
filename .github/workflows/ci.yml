@@ -7,6 +7,14 @@ name: CI
 # `bun run typecheck` is deliberately absent: this checkout carries five
 # pre-existing ToolCallId errors in the vendored @deepseek-ai/dsh-llm types,
 # so a type gate would be red for reasons unrelated to the change.
+#
+# The OSV scan runs LAST on purpose. It reads the lockfile, so it turns red on
+# any advisory published against a transitive dependency -- including dev-only
+# ones -- with no change to this repository at all. When it ran second, a
+# single such advisory (source-map-js, 2026-10-09) meant lint, test and build
+# never executed for a week: the job failed before reaching them, so a real
+# regression would have shipped unnoticed. Security still gates the job; it
+# just no longer decides whether the plugin gets tested.
 on:
   push:
     branches: [main]
@@ -25,11 +33,11 @@ jobs:
           # then fails with "Unknown lockfile version" before any test runs.
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile --ignore-scripts
+      - run: bun run lint
+      - run: bun run test
+      - run: bun run build
       - name: Supply chain scan (OSV)
         uses: google/osv-scanner-action/osv-scanner-action@v2.5.0
         with:
           scan-args: |-
             --lockfile bun.lock
-      - run: bun run lint
-      - run: bun run test
-      - run: bun run build
