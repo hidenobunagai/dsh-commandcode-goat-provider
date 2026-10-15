@@ -80,8 +80,9 @@ describe('catalog', () => {
     expect(modelSupportsEffort('inclusionai/ling-3.0-flash-sante:free')).toBe(false)
 
     // Known effort-capable models
-    expect(modelSupportsEffort('stealth/space-bunny-alpha')).toBe(true)
-    expect(modelSupportsEffort({ provider: 'commandcode-goat', model: 'stealth/space-bunny-alpha' })).toBe(true)
+    expect(modelSupportsEffort('stealth/glyph-cluster:free')).toBe(true)
+    expect(modelSupportsEffort({ provider: 'commandcode-goat', model: 'stealth/glyph-cluster:free' })).toBe(true)
+    expect(modelSupportsEffort('inclusionai/ling-3.1-flash')).toBe(true)
     expect(modelSupportsEffort('deepseek/deepseek-v4.1-flash')).toBe(true)
     expect(modelSupportsEffort({ provider: 'commandcode-goat', model: 'deepseek/deepseek-v4.1-flash' })).toBe(true)
     expect(modelSupportsEffort('deepseek/deepseek-v4.1-flash-fast')).toBe(true)
@@ -94,7 +95,6 @@ describe('catalog', () => {
 
     // Known models without efforts (researched 2026-10-02: no Reasons badge
     // on commandcode.ai, probe confirms no reasoning — see effort-decisions)
-    expect(modelSupportsEffort('inclusionai/ling-3.1-flash:free')).toBe(false)
     expect(modelSupportsEffort('moonshotai/Kimi-K2.5')).toBe(false)
     expect(modelSupportsEffort('zai-org/GLM-5')).toBe(false)
     expect(modelSupportsEffort('zai-org/GLM-5.1')).toBe(false)
@@ -123,12 +123,12 @@ describe('catalog', () => {
     expect(plain.reasoning?.efforts.map((e) => String(e.id))).toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
   })
 
-  it('declares the live-probed space-bunny-alpha effort ladder', () => {
-    // Probed 2026-09-25 against /provider/v1/chat/completions: low..max all
-    // return 200, and high/xhigh/max populate message.reasoning; an unknown
-    // value is rejected 400 with "expected one of low|medium|high|xhigh|max".
-    const resolved = resolveCommandCodeModel('commandcode-goat', 'stealth/space-bunny-alpha', undefined, defaultConfig)
-    expect(resolved.reasoning?.efforts.map((e) => String(e.id))).toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
+  it('keeps the researched ladder on a :free stealth model', () => {
+    // A :free id normally means "no effort", but glyph-cluster is a reasoning model
+    // (stealthmodels.com: reasoning effort low..xhigh; see docs/effort-decisions.json
+    // in the VS Code repo), so its catalog ladder must win over the suffix rule.
+    const resolved = resolveCommandCodeModel('commandcode-goat', 'stealth/glyph-cluster:free', undefined, defaultConfig)
+    expect(resolved.reasoning?.efforts.map((e) => String(e.id))).toEqual(['low', 'medium', 'high', 'xhigh'])
     expect(String(resolved.reasoning?.defaultEffort)).toBe('medium')
   })
 
