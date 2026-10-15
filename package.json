@@ -27,35 +27,35 @@
     "check": "tsc --noEmit && oxlint src tests && vitest run"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-agent": "^0.2.0-rc.1",
-    "@deepseek-ai/dsh-attachment": "^0.2.0-rc.1",
-    "@deepseek-ai/dsh-credentials": "^0.2.0-rc.1",
-    "@deepseek-ai/dsh-launch-environment": "^0.2.0-rc.1",
-    "@deepseek-ai/dsh-llm": "^0.2.0-rc.1",
-    "@deepseek-ai/dsh-session-projection": "^0.2.0-rc.1",
-    "@deepseek-ai/dsh-settings": "^0.2.0-rc.1",
-    "@deepseek-ai/dsh-timeout": "^0.2.0-rc.1",
-    "@deepseek-ai/dsh-tools": "^0.2.0-rc.1",
-    "@deepseek-ai/schemastery": "^3.18.4",
-    "@deepseek-ai/dsh-api-remotes": "^0.2.0-rc.1",
-    "@deepseek-ai/dsh-client-connection": "^0.2.0-rc.1",
-    "@deepseek-ai/dsh-client-locale": "^0.2.0-rc.1",
-    "@deepseek-ai/dsh-client-ui-settings": "^0.2.0-rc.1",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.2.0-rc.1",
-    "@deepseek-ai/dsh-client-ui-primitives": "^0.2.0-rc.1",
+    "@deepseek-ai/cordis": "^4.0.2 || >=4.0.5-alpha.0 <5.0.0",
+    "@deepseek-ai/dsh-agent": "^0.2.0-rc.1 || >=0.2.1-alpha.0 <0.3.0",
+    "@deepseek-ai/dsh-attachment": "^0.2.0-rc.1 || >=0.2.1-alpha.0 <0.3.0",
+    "@deepseek-ai/dsh-credentials": "^0.2.0-rc.1 || >=0.2.1-alpha.0 <0.3.0",
+    "@deepseek-ai/dsh-launch-environment": "^0.2.0-rc.1 || >=0.2.1-alpha.0 <0.3.0",
+    "@deepseek-ai/dsh-llm": "^0.2.0-rc.1 || >=0.2.1-alpha.0 <0.3.0",
+    "@deepseek-ai/dsh-session-projection": "^0.2.0-rc.1 || >=0.2.1-alpha.0 <0.3.0",
+    "@deepseek-ai/dsh-settings": "^0.2.0-rc.1 || >=0.2.1-alpha.0 <0.3.0",
+    "@deepseek-ai/dsh-timeout": "^0.2.0-rc.1 || >=0.2.1-alpha.0 <0.3.0",
+    "@deepseek-ai/dsh-tools": "^0.2.0-rc.1 || >=0.2.1-alpha.0 <0.3.0",
+    "@deepseek-ai/schemastery": "^3.18.4 || >=3.18.5-alpha.0 <4.0.0",
+    "@deepseek-ai/dsh-api-remotes": "^0.2.0-rc.1 || >=0.2.1-alpha.0 <0.3.0",
+    "@deepseek-ai/dsh-client-connection": "^0.2.0-rc.1 || >=0.2.1-alpha.0 <0.3.0",
+    "@deepseek-ai/dsh-client-locale": "^0.2.0-rc.1 || >=0.2.1-alpha.0 <0.3.0",
+    "@deepseek-ai/dsh-client-ui-settings": "^0.2.0-rc.1 || >=0.2.1-alpha.0 <0.3.0",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.2.0-rc.1 || >=0.2.1-alpha.0 <0.3.0",
+    "@deepseek-ai/dsh-client-ui-primitives": "^0.2.0-rc.1 || >=0.2.1-alpha.0 <0.3.0",
     "react": "^19.0.0"
   },
   "dependencies": {
-    "@deepseek-ai/cosmokit": "^1.8.5",
+    "@deepseek-ai/cosmokit": "^1.8.5 || >=1.8.6-alpha.0 <2.0.0",
     "eventsource-parser": "^3.1.0"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-agent": "^0.2.0-rc.1",
-    "@deepseek-ai/dsh-client-connection": "^0.2.0-rc.1",
-    "@deepseek-ai/dsh-sandbox": "^0.2.0-rc.1",
-    "@deepseek-ai/dsh-session-projection": "^0.2.0-rc.1",
-    "@deepseek-ai/dsh-tools": "^0.2.0-rc.1",
+    "@deepseek-ai/dsh-agent": "^0.2.0-rc.1 || >=0.2.1-alpha.0 <0.3.0",
+    "@deepseek-ai/dsh-client-connection": "^0.2.0-rc.1 || >=0.2.1-alpha.0 <0.3.0",
+    "@deepseek-ai/dsh-sandbox": "^0.2.0-rc.1 || >=0.2.1-alpha.0 <0.3.0",
+    "@deepseek-ai/dsh-session-projection": "^0.2.0-rc.1 || >=0.2.1-alpha.0 <0.3.0",
+    "@deepseek-ai/dsh-tools": "^0.2.0-rc.1 || >=0.2.1-alpha.0 <0.3.0",
     "@testing-library/react": "^16.2.0",
     "@types/node": "^22.13.9",
     "@types/react": "^19.0.10",
@@ -68,11 +68,11 @@
     "typescript": "^5.8.2",
     "vitest": "^4.1.11",
     "yaml": "^2.9.0",
-    "@deepseek-ai/cordis-plugin-loader": "^1.0.5"
+    "@deepseek-ai/cordis-plugin-loader": "^1.0.5 || >=1.0.6-alpha.0 <2.0.0"
   },
   "overrides": {
     "js-yaml": "^4.3.2",
-    "@deepseek-ai/dsh-llm": "0.2.0-rc.1"
+    "@deepseek-ai/schemastery": "3.18.5-alpha.2"
   },
   "dsh": {
     "bundle": {
