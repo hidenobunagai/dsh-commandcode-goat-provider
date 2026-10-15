@@ -33,6 +33,8 @@ The bundle is configured under the `llm-commandcode-goat` settings namespace:
 
 The session-header badge and the `get_usage` tool show the CommandCode GOAT quota (5-hour / weekly / monthly windows). The snapshot refreshes on each agent step (at most once per `refreshIntervalMs`, default 60000 ms). There is **no automatic switching**: neither quota pressure nor outages change the active route.
 
+Each window row carries its reset countdown. The credits endpoint reports `resetAt` for the 5-hour and weekly windows, but describes the monthly grant only as a remaining balance — no cap, no reset time. The monthly cycle end is therefore read from `/alpha/billing/subscriptions` (`currentPeriodEnd`) in a request parallel to the credits one, the same source the Pi usage extension and the homepi hub use. If that call fails the quota reading is unaffected; only the month row loses its countdown.
+
 ## Architecture & Integration
 
 [![Command Code GOAT DSH Provider Architecture](docs/architecture.png)](https://hidenobunagai.github.io/dsh-commandcode-goat-provider/)

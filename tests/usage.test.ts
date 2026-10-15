@@ -34,11 +34,19 @@ function boot(opts: {
   /** While false, the managed store answers undefined (async file load). */
   credentialsLoaded?: () => boolean
   launchEnv?: Record<string, string>
+  /** Monthly cycle end returned by the subscriptions endpoint, when it answers. */
+  monthlyPeriodEnd?: string
+  /** Set false to model a subscriptions endpoint that fails or is absent. */
+  subscriptions?: boolean
 }): Harness {
   const calls: { url: string; authorization: string | undefined }[] = []
   vi.stubGlobal('fetch', async (input: unknown, init?: { headers?: Record<string, string> }) => {
     const url = String(input)
     calls.push({ url, authorization: init?.headers?.Authorization })
+    if (url.includes('/alpha/billing/subscriptions')) {
+      if (opts.subscriptions === false) return { ok: false, json: async () => ({}) }
+      return { ok: true, json: async () => ({ data: { currentPeriodEnd: opts.monthlyPeriodEnd } }) }
+    }
     const slice = { used: opts.goatPercent, cap: 100 }
     const body = {
       windowLimits: { fiveHour: slice, weekly: slice },
@@ -157,6 +165,31 @@ describe('GOAT quota projection', () => {
       url: 'https://api.commandcode.ai/alpha/billing/credits',
       authorization: 'Bearer launch-goat-key',
     })
+  })
+
+  it('takes the monthly reset from the subscriptions cycle end', async () => {
+    // The credits payload has no monthly window at all, so without this second
+    // call the badge's month row can never show when the grant refills.
+    const periodEnd = '2026-10-30T03:57:55.000Z'
+    const h = boot({ goatPercent: 66, monthlyPeriodEnd: periodEnd })
+    await h.preStep()
+
+    expect(h.calls).toContainEqual({
+      url: 'https://api.commandcode.ai/alpha/billing/subscriptions',
+      authorization: 'Bearer goat-key',
+    })
+    const monthly = h.registered()?.apply().goat?.monthly
+    expect(monthly?.resetAt).toBe(Date.parse(periodEnd))
+  })
+
+  it('keeps the monthly percent when the subscriptions endpoint is unavailable', async () => {
+    // A reset time is a nice-to-have: the quota reading must survive without it.
+    const h = boot({ goatPercent: 66, subscriptions: false })
+    await h.preStep()
+
+    const monthly = h.registered()?.apply().goat?.monthly
+    expect(monthly?.percent).toBeCloseTo(66, 5)
+    expect(monthly?.resetAt).toBeUndefined()
   })
 
   it('serves get_usage from the projection state', async () => {

@@ -16,7 +16,7 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
 const SNAPSHOT = {
   fiveHour: { used: 10, cap: 100, percent: 10 },
   weekly: { used: 20, cap: 100, percent: 20 },
-  monthly: { used: 42, cap: 70, percent: 60 },
+  monthly: { used: 42, cap: 70, percent: 60, resetAt: Date.now() + 6 * 86400000 + 12 * 3600000 },
   fetchedAt: Date.now(),
 }
 
@@ -55,6 +55,18 @@ describe('UsageBadge', () => {
     const labels = [...document.querySelectorAll('[role="dialog"] li')]
       .map((row) => row.firstElementChild?.textContent)
     expect(labels).toEqual(['5h', 'week', 'month'])
+  })
+
+  it('shows the monthly reset countdown, not just the shorter windows', () => {
+    render(React.createElement(UsageBadge, { useProjection }))
+    fireEvent.click(screen.getByRole('button'))
+
+    const monthRow = [...document.querySelectorAll('[role="dialog"] li')]
+      .find((row) => row.firstElementChild?.textContent === 'month')
+    expect(monthRow?.textContent).toContain('60%')
+    // Minimum unit of the countdown is the floor to whole hours, so the last
+    // digit can be one lower by the time the assertion runs.
+    expect(monthRow?.textContent).toMatch(/↻6d1[12]h/)
   })
 
   it('closes the panel on Escape', () => {
