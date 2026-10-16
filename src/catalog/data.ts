@@ -99,7 +99,7 @@ export const CATALOG: readonly CatalogEntry[] = [
   { id: 'deepseek/deepseek-v4-flash-vision-exp', name: 'DeepSeek V4 Flash Vision (exp)', contextWindow: 1000000, maxTokens: 65536, protocol: 'openai', modalities: ['text', 'image'], efforts: ['low', 'high', 'max'], defaultEffort: 'high', tier: 'go', label: 'Go/GOAT', inputPrice: 0.22, outputPrice: 0.66 },
 
   // ── Free tier extras ───────────────────────────────────────────────
-  { id: 'inclusionai/ling-3.0-flash-sante:free', name: 'Ling 3.0 Flash Sante', contextWindow: 262144, maxTokens: 65536, protocol: 'openai', modalities: ['text'], tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free', latest: true },
+  { id: 'reflection/beam:free', name: 'Beam 1.0', contextWindow: 1048576, maxTokens: 131072, protocol: 'openai', modalities: ['text'], efforts: ['low', 'medium', 'high', 'xhigh', 'max'], defaultEffort: 'medium', tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free', latest: true },
   { id: 'poolside/laguna-s-2.1-free', name: 'Laguna S 2.1', contextWindow: 256000, maxTokens: 32768, protocol: 'openai', modalities: ['text'], tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free' },
   // Stealth preview (commandcode.ai/models/glyph-cluster-free: reasons, text-only, $0; cat-jam-free: reasons, text-only, $0).
   // (stealth/pixel-canary dropped 2026-10-02, stealth/space-bunny-alpha 2026-10-10: API no longer serves them.)

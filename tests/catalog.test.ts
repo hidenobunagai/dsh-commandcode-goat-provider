@@ -76,10 +76,9 @@ describe('catalog', () => {
     // Free tier models do not support reasoning effort
     expect(modelSupportsEffort('poolside/laguna-s-2.1-free')).toBe(false)
     expect(modelSupportsEffort({ provider: 'commandcode-goat', model: 'poolside/laguna-s-2.1-free' })).toBe(false)
-    expect(modelSupportsEffort('meituan/LongCat-2.0:free')).toBe(false)
-    expect(modelSupportsEffort('inclusionai/ling-3.0-flash-sante:free')).toBe(false)
-
     // Known effort-capable models
+    expect(modelSupportsEffort('reflection/beam:free')).toBe(true)
+    expect(modelSupportsEffort({ provider: 'commandcode-goat', model: 'reflection/beam:free' })).toBe(true)
     expect(modelSupportsEffort('stealth/glyph-cluster:free')).toBe(true)
     expect(modelSupportsEffort({ provider: 'commandcode-goat', model: 'stealth/glyph-cluster:free' })).toBe(true)
     expect(modelSupportsEffort('inclusionai/ling-3.1-flash')).toBe(true)
