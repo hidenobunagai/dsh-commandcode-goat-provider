@@ -72,7 +72,7 @@
   },
   "overrides": {
     "js-yaml": "^4.3.2",
-    "@deepseek-ai/schemastery": "3.18.5-alpha.2",
+    "@deepseek-ai/schemastery": "3.18.5",
     "source-map-js": "^1.2.2"
   },
   "dsh": {
