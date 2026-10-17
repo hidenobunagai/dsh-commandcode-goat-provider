@@ -4,6 +4,8 @@
 id, name, context window, max tokens, wire protocol, modalities, reasoning efforts, pricing and tier.
 `src/catalog/index.ts` derives every lookup map (`STATIC_MODELS`, `KNOWN_EFFORTS`, `KNOWN_IMAGE_MODELS`,
 `KNOWN_STATS`, `FALLBACK_MODELS`) from that array — never hand-edit a derived map.
+`src/catalog/pricing.ts` is the one place price text is spelled (`$0.20→$1.20`, or `Free`); both the picker
+row and the model description read their figure from it, so the two can never disagree.
 
 The full procedure — drift detection, capability curation rules, version bump, publishing and the automated
 daily run — lives next to the VS Code extension that shares this catalog:
@@ -32,3 +34,8 @@ bun run test && bun run build        # the gate that must be green
 Discovery source: `GET https://api.commandcode.ai/provider/v1/models` (public) returns only
 `id` / `name` / `context_length`; capabilities and pricing must be curated from `commandcode.ai/models`.
 Never invent values — an omitted capability is safer than a wrong one.
+
+A row without a price is a visible gap: the picker labels every catalog entry, so an entry left without
+`inputPrice` / `outputPrice` is the only kind that renders as a bare name. `tests/pricing.test.ts` holds
+that shape in place — every entry publishes both sides of the price, and no entry mixes a free side with
+a paid one.

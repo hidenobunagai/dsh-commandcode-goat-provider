@@ -11,6 +11,7 @@ This package is a native, external DSH bundle providing first-class access to bl
 - **Direct Provider Integration**: Connects straight to Command Code Provider API (`/provider/v1/models`, `/provider/v1/chat/completions`, `/provider/v1/messages`) without local proxies or daemon intermediaries.
 - **Dual Wire Translation**: Dynamically maps requests and SSE streams between DSH's internal streaming protocol (`StreamChunk`) and OpenAI / Anthropic wire formats based on model family and custom overrides.
 - **Dynamic Catalog & Static Fallbacks**: Normalizes live discovery results from `/provider/v1/models` while preserving static capability hints for known models (e.g. `gpt-5.6-luna`, `claude-sonnet-4-6`).
+- **Prices in the Picker**: Every picker row shows the model's published input→output price (`$0.20→$1.20`), with free models named `Free`, so a model's cost is visible before the first call.
 - **Web Settings Card**: Registers an accessible, localized configuration card under **Settings → Plugins → Configurable** (`llm-commandcode-goat`) with write-only credential staging.
 - **Security & Privacy**: API keys are resolved exclusively through DSH's credential store (`ctx.credentials`) or ambient launch environment (`COMMANDCODE_API_KEY`) and are never written to disk, logged, or exposed in the UI. Supports Zero Data Retention (ZDR) routing.
 
@@ -28,6 +29,14 @@ The bundle is configured under the `llm-commandcode-goat` settings namespace:
 | `streamIdleTimeoutMs` | `number` | `300000` (5m) | Maximum silence duration between streaming chunks before aborting. |
 | `enableZdr` | `boolean` | `false` | When enabled, requests Zero Data Retention from supported providers. |
 | `protocolOverrides` | `Array<{ model, protocol }>` | `[]` | Explicit wire protocol mappings (`openai` or `anthropic`). |
+
+## Prices in the model picker
+
+Each row of the composer's model picker appends the catalog price, `$0.20→$1.20` (USD per million tokens, in→out), right-aligned so the figures form one column. A free model is named `Free` instead. The price is read from the same `CATALOG` entry that builds the model description, so the row and the description can never drift apart.
+
+The label is registered on the `conversation.input.model.label` slot. That slot is `single`, and DSH ships its own contribution to it for the DeepSeek-official Flash row (the `1017` release badge); a second registration therefore shadows the first rather than composing with it, which is why this bundle registers at `priority: -1` and reproduces the badge in its own component. Rows belonging to other providers keep their untouched name, and a model the catalog has not curated shows no price at all — a figure is never invented.
+
+The composer trigger and the root-menu value stay name-only: the trigger is a narrow, truncating caption, not a place models are compared. The `/model` slash-command popup is not covered — DSH builds its rows without a slot hook, so that surface still lists names only.
 
 ## Quota badge
 
