@@ -3,17 +3,20 @@
    on one line: the name truncates and the price keeps its width.
    Tokens only — no color literals, so light/dark and themes follow the host. */
 
+/* The name element already spans the row, so the price can be pushed to its
+   right edge: prices then line up down the list and can be compared by eye
+   instead of hunting a ragged column that follows each name. */
 .label {
-  display: inline-flex;
+  display: flex;
   align-items: baseline;
   gap: 6px;
-  max-width: 100%;
+  width: 100%;
   min-width: 0;
-  vertical-align: baseline;
   white-space: nowrap;
 }
 
-/* The name keeps the slot's own overflow behavior; only the price is fixed. */
+/* First to give way when the row is narrow: the name truncates, the price does
+   not, so a long name never hides the price it is being compared by. */
 .name {
   min-width: 0;
   overflow: hidden;
@@ -26,6 +29,8 @@
    4.5:1 floor. Tabular figures keep a column of prices visually aligned. */
 .price {
   flex: none;
+  margin-left: auto;
+  padding-left: 4px;
   color: var(--dsw-alias-label-secondary);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
