@@ -44,8 +44,9 @@ function hasReleaseBadge(providerId: string, model: { id: string; name: string }
  *
  * Three constraints shape this:
  * - The slot is declared `inline` inside the row's name element — a single-line,
- *   ellipsised box — so the price cannot move to a second line; it follows the
- *   name and yields first when space runs out.
+ *   ellipsised box — so the price cannot move to a second line. It shares that
+ *   line, and the name is what truncates when the row is narrow, so a long name
+ *   never hides the price it is being compared by.
  * - The slot is shared by every provider and this bundle is the only one with
  *   price data, so a price is added to our own route only. A foreign provider
  *   exposing the same model id must not inherit our figure.
