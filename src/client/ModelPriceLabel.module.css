@@ -1,0 +1,33 @@
+/* Inline composer model label. Rendered inside the picker row's name element,
+   which is a single-line, ellipsised box (13px/18px), so everything here stays
+   on one line: the name truncates and the price keeps its width.
+   Tokens only — no color literals, so light/dark and themes follow the host. */
+
+.label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
+/* The name keeps the slot's own overflow behavior; only the price is fixed. */
+.name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Price is secondary to the name. `label-secondary` (not `tertiary`): this is
+   functional text and tertiary lands at 3.4:1 on the row surface, below the
+   4.5:1 floor. Tabular figures keep a column of prices visually aligned. */
+.price {
+  flex: none;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}

@@ -8,6 +8,7 @@ import type { ReasoningEffortId as ReasoningEffortIdType } from '@deepseek-ai/ds
 import type { CommandCodeConfig, CommandCodeStaticModel, Protocol, ProtocolOverride } from '../types.ts'
 import { DEFAULT_CONTEXT_WINDOW, DEFAULT_MAX_TOKENS } from '../config.ts'
 import { CATALOG, modelSupportsEffort, toStaticModel } from './data.ts'
+import { formatPriceRange } from './pricing.ts'
 
 export { CATALOG, modelSupportsEffort, toStaticModel }
 
@@ -80,14 +81,6 @@ export function formatContext(contextWindow: number | undefined): string | undef
   return `${Math.floor(contextWindow / 1_000)}K`
 }
 
-function formatPrice(val: number): string {
-  if (Number.isInteger(val)) return `$${val}.00`
-  const str = val.toString()
-  const parts = str.split('.')
-  if (parts[1]?.length === 1) return `$${val}0`
-  return `$${val}`
-}
-
 /**
  * Compact model description for the model picker dropdown.
  * Keep it to ~60 chars so it does not wrap to 3 lines at 280px width.
@@ -104,16 +97,10 @@ export function buildModelDescription(
   // 1. Price (short) — prefer static catalog, fall back to discovery-carried pricing
   const inputPrice = stats?.inputPrice ?? discoveredPrice?.inputPrice
   const outputPrice = stats?.outputPrice ?? discoveredPrice?.outputPrice
-  if (inputPrice === 'free') {
-    parts.push('Free')
-  } else if (typeof inputPrice === 'number') {
-    const inStr = formatPrice(inputPrice)
-    const outStr = typeof outputPrice === 'number' ? `→${formatPrice(outputPrice)}` : ''
-    parts.push(`${inStr}${outStr}`)
-  } else if (!stats) {
-    // Truly unknown: surface ctx + caps so the model is still identifiable;
-    // do not invent a price.
-  }
+  // Shared with the picker-row label, so one price is spelled the same way
+  // everywhere. Unknown models stay price-free (no invented figure).
+  const priceText = formatPriceRange(inputPrice, outputPrice)
+  if (priceText.length > 0) parts.push(priceText)
 
   // 2. Context
   const ctxStr = formatContext(contextWindow)

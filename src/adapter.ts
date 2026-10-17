@@ -36,8 +36,10 @@ import { parseSse } from './wire/sse.ts'
 import { streamOpenAi } from './wire/openai.ts'
 import { streamAnthropic } from './wire/anthropic.ts'
 
-export const PROVIDER_ROUTE = 'commandcode-goat'
-export const PROVIDER_DISPLAY_NAME = 'Command Code GOAT'
+// Re-exported so existing host-side imports keep working; the values live in
+// `route.ts` because the browser client needs them without the LLM runtime.
+import { PROVIDER_DISPLAY_NAME, PROVIDER_ROUTE } from './route.ts'
+export { PROVIDER_DISPLAY_NAME, PROVIDER_ROUTE } from './route.ts'
 
 export interface CommandCodeAdapterOptions {
   connection: () => ResolvedConnection | Promise<ResolvedConnection>

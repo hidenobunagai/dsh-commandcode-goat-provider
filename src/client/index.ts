@@ -4,6 +4,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import React, { useSyncExternalStore } from 'react'
 import { CommandCodeCard } from './CommandCodeCard.tsx'
 import { CommandCodeCardController } from './card-controller.ts'
+import { ModelPriceLabel } from './ModelPriceLabel.tsx'
 import { UsageBadge, type UsageBadgeProps, type UsageBadgeText } from './UsageBadge.tsx'
 import { getLocaleText, type LocaleKey } from './locales.ts'
 
@@ -99,6 +100,20 @@ export function apply(ctx: any): void {
           order: 5,
         },
         UsageBadgeSlot,
+      )
+    })
+    // Composer model label (picker rows carry the published input→output price).
+    // `conversation.input.model.label` is a `single` slot: one entry renders, so
+    // priority -1 shadows the host's own label plugin. That plugin is reproduced
+    // inside ModelPriceLabel — see its comment — because shadowing does not
+    // compose and the `1017` badge would otherwise disappear.
+    ctx.slots.inject('conversation.input.model.label', function* () {
+      yield ctx.slots.register(
+        {
+          name: 'conversation.input.model.label',
+          priority: -1,
+        },
+        ModelPriceLabel,
       )
     })
   }
