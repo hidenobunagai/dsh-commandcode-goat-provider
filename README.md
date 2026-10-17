@@ -35,6 +35,8 @@ The session-header badge and the `get_usage` tool show the CommandCode GOAT quot
 
 Each window row carries its reset countdown. The credits endpoint reports `resetAt` for the 5-hour and weekly windows, but describes the monthly grant only as a remaining balance — no cap, no reset time. The monthly cycle end is therefore read from `/alpha/billing/subscriptions` (`currentPeriodEnd`) in a request parallel to the credits one, the same source the Pi usage extension and the homepi hub use. If that call fails the quota reading is unaffected; only the month row loses its countdown.
 
+The panel lays every row out on one grid — label, bar, countdown, percent — and the header spans the same columns, so a wide countdown or a missing one never shifts the bars or the figures. A window with no reset time keeps an empty countdown cell rather than letting its neighbour move, and the percent holds the right edge. Below 900px the countdown column is dropped and the rest of the alignment is unchanged.
+
 ## Architecture & Integration
 
 [![Command Code GOAT DSH Provider Architecture](docs/architecture.png)](https://hidenobunagai.github.io/dsh-commandcode-goat-provider/)

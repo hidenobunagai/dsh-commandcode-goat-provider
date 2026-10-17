@@ -130,8 +130,10 @@ function WindowRow({ reading }: { reading: WindowReading }): React.JSX.Element {
           style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
         />
       </span>
-      <span className={css.rowValue}>{percent}%</span>
+      {/* DOM order follows the reading order (countdown, then the figure that
+          holds the right edge); the grid places them in their columns. */}
       <span className={css.rowReset}>{remaining ? `↻${remaining}` : ''}</span>
+      <span className={css.rowValue}>{percent}%</span>
     </li>
   )
 }
@@ -223,12 +225,14 @@ export function UsageBadge({ useProjection, useSession, t = FALLBACK }: UsageBad
           {model.sides.map((side) => (
             <section key={side.key} className={css.group}>
               <h4 className={css.groupTitle}>
-                <Gauge percent={side.worst} tone={side.tone} />
-                <span className={css.groupLabel}>{side.label}</span>
+                <span className={css.groupName}>
+                  <Gauge percent={side.worst} tone={side.tone} />
+                  <span className={css.groupLabel}>{side.label}</span>
+                  {side.tone === 'hot'
+                    ? <span className={css.groupWarn} title={t.hot} aria-label={t.hot}>⚠</span>
+                    : null}
+                </span>
                 <span className={css.groupValue}>{Math.round(side.worst)}%</span>
-                {side.tone === 'hot'
-                  ? <span className={css.groupWarn} title={t.hot} aria-label={t.hot}>⚠</span>
-                  : null}
               </h4>
               <ul className={css.rows}>
                 {side.readings.map((reading) => (
