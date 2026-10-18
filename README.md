@@ -42,9 +42,11 @@ The composer trigger and the root-menu value stay name-only: the trigger is a na
 
 The session-header badge and the `get_usage` tool show the CommandCode GOAT quota (5-hour / weekly / monthly windows). The snapshot refreshes on each agent step (at most once per `refreshIntervalMs`, default 60000 ms). There is **no automatic switching**: neither quota pressure nor outages change the active route.
 
-Each window row carries its reset countdown. The credits endpoint reports `resetAt` for the 5-hour and weekly windows, but describes the monthly grant only as a remaining balance — no cap, no reset time. The monthly cycle end is therefore read from `/alpha/billing/subscriptions` (`currentPeriodEnd`) in a request parallel to the credits one, the same source the Pi usage extension and the homepi hub use. If that call fails the quota reading is unaffected; only the month row loses its countdown.
+Each window row carries the deadline at which it reopens, as local wall-clock time: `HH:mm` for the 5-hour window, `MM/DD HH:mm` for the weekly and monthly ones. The credits endpoint reports `resetAt` for the 5-hour and weekly windows, but describes the monthly grant only as a remaining balance — no cap, no reset time. The monthly cycle end is therefore read from `/alpha/billing/subscriptions` (`currentPeriodEnd`) in a request parallel to the credits one, the same source the Pi usage extension and the homepi hub use. If that call fails the quota reading is unaffected; only the month row loses its deadline.
 
-The panel lays every row out on one grid — label, bar, countdown, percent — and the header spans the same columns, so a wide countdown or a missing one never shifts the bars or the figures. A window with no reset time keeps an empty countdown cell rather than letting its neighbour move, and the percent holds the right edge. Below 900px the countdown column is dropped and the rest of the alignment is unchanged.
+A deadline is more useful than a countdown here: the snapshot only refreshes on an agent step, so `4h22m` was already stale by the time it was read, and "when does this come back" is the question the number answers. A 5-hour window that happens to cross midnight keeps its date rather than showing a bare time that reads as the past.
+
+The panel lays every row out on one grid — label, bar, deadline, percent — and the header spans the same columns, so a wide deadline or a missing one never shifts the bars or the figures. A window with no reset time keeps an empty deadline cell rather than letting its neighbour move, and the percent holds the right edge. Below 900px the deadline column is dropped and the rest of the alignment is unchanged.
 
 ## Architecture & Integration
 

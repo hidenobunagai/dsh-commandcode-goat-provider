@@ -135,10 +135,10 @@
 
 /* One grid owns the whole group, so the header, every bar and every figure sit
    in shared columns and the rows line up on both edges no matter how wide a
-   label or a countdown happens to be. The header, the list and each row are
+   label or a reset deadline happens to be. The header, the list and each row are
    subgrids of those columns rather than flex lines with hand-tuned widths: a
    `min-width` on the last cell used to leave the right edge ragged whenever the
-   countdown grew past it (`↻999d23h` is wider than `↻4d11h`), and intrinsic
+   deadline cell grew (`↻12/31 23:59` is wider than `↻15:30`), and intrinsic
    label widths floated each bar's left edge to a different x. */
 .group {
   display: grid;
@@ -205,7 +205,7 @@
   padding: 1px 0;
 }
 
-/* The countdown sits in the column before the percent and the percent sits hard
+/* The deadline sits in the column before the percent and the percent sits hard
    against the panel edge. A window with no reset time then leaves a gap inside
    the row instead of pushing its neighbour out, which is what kept the right
    edge uneven. */
@@ -249,7 +249,7 @@
   color: var(--dsw-alias-label-secondary);
 }
 
-/* Narrow headers drop the countdown column before anything else gives way. The
+/* Narrow headers drop the deadline column before anything else gives way. The
    percent cell is addressed from the end of the grid, so it keeps the last
    column -- and the panel edge -- without being restated here. */
 @media (max-width: 900px) {

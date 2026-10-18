@@ -45,21 +45,36 @@ interface WindowReading {
   id: string
   label: string
   window: UsageWindowView
+  /** Whether the deadline needs a date; a window inside the day reads as a time. */
+  dated: boolean
 }
 
+const pad2 = (n: number): string => String(n).padStart(2, '0')
+
 /**
- * Compact reset countdown: `4h22m` under a day, `3d12h` over it.
+ * The local wall-clock time a window reopens: `HH:mm` for the 5-hour window,
+ * `MM/DD HH:mm` for the weekly and monthly ones. A countdown ("4h22m") said how
+ * long was left and went stale between refreshes; the deadline says when, which
+ * is what the quota promises and stays readable at a glance. Follows the
+ * `Resets <time>` readout Claude Code shows for the same windows.
  * @param resetAt - epoch millis when the window resets, when reported.
- * @returns the countdown, or undefined when unknown or already elapsed.
+ * @param dated - whether this window's horizon always needs a date.
+ * @returns the deadline, or undefined when unknown or already elapsed.
  */
-function countdown(resetAt?: number): string | undefined {
+function resetLabel(resetAt: number | undefined, dated: boolean): string | undefined {
   if (!resetAt) return undefined
-  const diff = resetAt - Date.now()
-  if (!(diff > 0)) return undefined
-  const h = Math.floor(diff / 3600000)
-  const m = Math.floor((diff % 3600000) / 60000)
-  if (h >= 24) return `${Math.floor(h / 24)}d${h % 24}h`
-  return h > 0 ? `${h}h${m}m` : `${Math.max(1, m)}m`
+  if (!(resetAt > Date.now())) return undefined
+  const at = new Date(resetAt)
+  const now = new Date()
+  const time = `${pad2(at.getHours())}:${pad2(at.getMinutes())}`
+  // A short window that resets after midnight still needs the date: "02:15"
+  // alone would read as a time that already passed today.
+  const acrossDays =
+    at.getFullYear() !== now.getFullYear() ||
+    at.getMonth() !== now.getMonth() ||
+    at.getDate() !== now.getDate()
+  if (!dated && !acrossDays) return time
+  return `${pad2(at.getMonth() + 1)}/${pad2(at.getDate())} ${time}`
 }
 
 /** Tone buckets: over threshold, merely used, or no reading at all. */
@@ -81,9 +96,9 @@ const toneClass: Record<Tone, string> = {
  */
 function readSide(side: UsageSideView, t: UsageBadgeText): { readings: WindowReading[]; worst: number } {
   const readings: WindowReading[] = [
-    { id: '5h', label: t.window5h, window: side.fiveHour },
-    { id: 'week', label: t.windowWeek, window: side.weekly },
-    { id: 'month', label: t.windowMonth, window: side.monthly },
+    { id: '5h', label: t.window5h, window: side.fiveHour, dated: false },
+    { id: 'week', label: t.windowWeek, window: side.weekly, dated: true },
+    { id: 'month', label: t.windowMonth, window: side.monthly, dated: true },
   ]
   const worst = Math.max(...readings.map((r) => r.window.percent))
   return { readings, worst }
@@ -114,13 +129,13 @@ function Gauge({ percent, tone }: { percent: number; tone: Tone }): React.JSX.El
 }
 
 /**
- * One window row in the detail panel: label, micro bar, percent, countdown.
+ * One window row in the detail panel: label, micro bar, reset deadline, percent.
  * @param props - the reading to render.
  * @returns the row markup.
  */
 function WindowRow({ reading }: { reading: WindowReading }): React.JSX.Element {
   const percent = Math.round(reading.window.percent)
-  const remaining = countdown(reading.window.resetAt)
+  const reset = resetLabel(reading.window.resetAt, reading.dated)
   return (
     <li className={css.row}>
       <span className={css.rowLabel}>{reading.label}</span>
@@ -130,9 +145,9 @@ function WindowRow({ reading }: { reading: WindowReading }): React.JSX.Element {
           style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
         />
       </span>
-      {/* DOM order follows the reading order (countdown, then the figure that
-          holds the right edge); the grid places them in their columns. */}
-      <span className={css.rowReset}>{remaining ? `↻${remaining}` : ''}</span>
+      {/* DOM order follows the reading order (reset deadline, then the figure
+          that holds the right edge); the grid places them in their columns. */}
+      <span className={css.rowReset}>{reset ? `↻${reset}` : ''}</span>
       <span className={css.rowValue}>{percent}%</span>
     </li>
   )
