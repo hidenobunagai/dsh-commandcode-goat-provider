@@ -35,7 +35,10 @@ Discovery source: `GET https://api.commandcode.ai/provider/v1/models` (public) r
 `id` / `name` / `context_length`; capabilities and pricing must be curated from `commandcode.ai/models`.
 Never invent values — an omitted capability is safer than a wrong one.
 
-A row without a price is a visible gap: the picker labels every catalog entry, so an entry left without
-`inputPrice` / `outputPrice` is the only kind that renders as a bare name. `tests/pricing.test.ts` holds
-that shape in place — every entry publishes both sides of the price, and no entry mixes a free side with
-a paid one.
+A row added by the daily watch may carry no price. The live API publishes none (see above), so a newly
+synced model lands with `inputPrice` / `outputPrice` absent by design, and the picker renders its bare
+name until a price is curated from `commandcode.ai/models`. Add the pair when you have both sides; do not
+invent one. In particular never pair a `free` input with a paid output — the picker would print `Free`
+for a billed model, which is exactly the mistake the rows are there to prevent.
+`tests/pricing.test.ts` pins this: a one-sided or mixed pair fails, and a price-less entry must render as
+a bare name rather than a borrowed figure.

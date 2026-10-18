@@ -11,7 +11,7 @@ This package is a native, external DSH bundle providing first-class access to bl
 - **Direct Provider Integration**: Connects straight to Command Code Provider API (`/provider/v1/models`, `/provider/v1/chat/completions`, `/provider/v1/messages`) without local proxies or daemon intermediaries.
 - **Dual Wire Translation**: Dynamically maps requests and SSE streams between DSH's internal streaming protocol (`StreamChunk`) and OpenAI / Anthropic wire formats based on model family and custom overrides.
 - **Dynamic Catalog & Static Fallbacks**: Normalizes live discovery results from `/provider/v1/models` while preserving static capability hints for known models (e.g. `gpt-5.6-luna`, `claude-sonnet-4-6`).
-- **Prices in the Picker**: Every picker row shows the model's published input→output price (`$0.20→$1.20`), with free models named `Free`, so a model's cost is visible before the first call.
+- **Prices in the Picker**: Each picker row shows the model's published input→output price (`$0.20→$1.20`), with free models named `Free`, so a model's cost is visible before the first call. A model whose price is not published shows its name alone.
 - **Web Settings Card**: Registers an accessible, localized configuration card under **Settings → Plugins → Configurable** (`llm-commandcode-goat`) with write-only credential staging.
 - **Security & Privacy**: API keys are resolved exclusively through DSH's credential store (`ctx.credentials`) or ambient launch environment (`COMMANDCODE_API_KEY`) and are never written to disk, logged, or exposed in the UI. Supports Zero Data Retention (ZDR) routing.
 
