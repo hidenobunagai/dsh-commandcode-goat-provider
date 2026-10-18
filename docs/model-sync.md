@@ -17,8 +17,7 @@ daily run — lives next to the VS Code extension that shares this catalog:
 
 ```bash
 bun run test && bun run build        # the gate that must be green
-# bun run typecheck is optional here: this checkout has five pre-existing ToolCallId errors in
-# the vendored @deepseek-ai/dsh-llm types, unrelated to catalog work
+# bun run check runs typecheck + lint + test in one pass; `bun run typecheck` alone is fine too
 ```
 
 1. Add or update the entry in `CATALOG` (one line per model, all fields in the same place).
