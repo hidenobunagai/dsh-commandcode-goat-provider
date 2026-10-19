@@ -44,7 +44,7 @@ describe('modelPriceLabel', () => {
   })
 
   it('marks a free model as free', () => {
-    expect(modelPriceLabel('stealth/cat-jam:free')).toBe(FREE_PRICE_LABEL)
+    expect(modelPriceLabel('reflection/beam:free')).toBe(FREE_PRICE_LABEL)
   })
 
   it('invents no price for an unknown model', () => {

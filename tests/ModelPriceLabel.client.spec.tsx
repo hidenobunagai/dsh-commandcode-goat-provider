@@ -38,7 +38,7 @@ describe('ModelPriceLabel', () => {
     render(
       React.createElement(
         ModelPriceLabel,
-        owner({ model: { id: 'stealth/cat-jam:free', name: 'Cat Jam' } }),
+        owner({ model: { id: 'reflection/beam:free', name: 'Beam 1.0' } }),
       ),
     )
 
