@@ -249,18 +249,10 @@
   color: var(--dsw-alias-label-secondary);
 }
 
-/* Narrow headers drop the deadline column before anything else gives way. The
-   percent cell is addressed from the end of the grid, so it keeps the last
-   column -- and the panel edge -- without being restated here. */
-@media (max-width: 900px) {
-  .group {
-    grid-template-columns: max-content minmax(0, 1fr) max-content;
-  }
-
-  .rowReset {
-    display: none;
-  }
-}
+/* The deadline column stays on every width. An earlier rule dropped it below
+   900px to protect the bar, but the panel is already capped at 264px, so a
+   phone shows the same layout as a desktop: label, bar, deadline, percent. The
+   only thing a narrow header gives up is the trigger gap below. */
 
 /* Phone-width header: tighter trigger gap; the panel width is already capped
    to the viewport by the base rule and clamped into place by the anchor hook. */
