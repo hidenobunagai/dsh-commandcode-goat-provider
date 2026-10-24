@@ -142,6 +142,9 @@ describe('catalog', () => {
     expect(String(fast.reasoning?.defaultEffort)).toBe('high')
     const k3 = resolveCommandCodeModel('commandcode-goat', 'moonshotai/Kimi-K3', undefined, defaultConfig)
     expect(k3.reasoning?.efforts.map((e) => String(e.id))).toEqual(['low', 'high', 'max'])
+    const grok = resolveCommandCodeModel('commandcode-goat', 'xai/grok-4.5', undefined, defaultConfig)
+    expect(grok.reasoning?.efforts.map((e) => String(e.id))).toEqual(['low', 'medium', 'high', 'xhigh'])
+    expect(String(grok.reasoning?.defaultEffort)).toBe('medium')
   })
 
   it('retired pixel-canary when the stealth preview ended', () => {
