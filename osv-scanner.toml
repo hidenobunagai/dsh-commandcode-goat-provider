@@ -1,0 +1,18 @@
+# OSV-Scanner configuration
+# https://google.github.io/osv-scanner/configuration/
+
+[[IgnoredVulns]]
+id = "GHSA-333x-w4r6-6crp"
+reason = "Transitive dependency from ajv via fast-uri 3.1.8; 3.1.9 within cooldown window"
+
+[[IgnoredVulns]]
+id = "GHSA-w74x-v6f9-j3xg"
+reason = "Transitive dependency from ajv via fast-uri 3.1.8; 3.1.9 within cooldown window"
+
+[[IgnoredVulns]]
+id = "GHSA-wjr9-j795-jxcr"
+reason = "Transitive dependency from ajv via fast-uri 3.1.8; 3.1.9 within cooldown window"
+
+[[IgnoredVulns]]
+id = "GHSA-xhq7-xmqj-769h"
+reason = "Transitive dependency from ajv via fast-uri 3.1.8; 3.1.9 within cooldown window"
