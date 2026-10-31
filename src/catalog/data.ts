@@ -102,6 +102,8 @@ export const CATALOG: readonly CatalogEntry[] = [
   // ── Free tier extras ───────────────────────────────────────────────
   { id: 'reflection/beam:free', name: 'Beam 1.0', contextWindow: 1048576, maxTokens: 131072, protocol: 'openai', modalities: ['text'], efforts: ['low', 'medium', 'high', 'xhigh', 'max'], defaultEffort: 'medium', tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free', latest: true },
   { id: 'poolside/laguna-s-2.1-free', name: 'Laguna S 2.1', contextWindow: 256000, maxTokens: 32768, protocol: 'openai', modalities: ['text'], tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free' },
+  // Free promo snapshot of Ling 3.1 Flash (commandcode.ai/models/ling-3-1-flash-1019-free: reasons, text-only, $0).
+  { id: 'inclusionai/ling-3.1-flash-1019:free', name: 'Ling 3.1 Flash 1019', contextWindow: 1000000, maxTokens: 131072, protocol: 'openai', modalities: ['text'], efforts: ['low', 'medium', 'high'], defaultEffort: 'medium', tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free', latest: true },
   // Stealth preview (commandcode.ai/models/glyph-cluster-free: reasons, text-only, $0).
   // (stealth/pixel-canary dropped 2026-10-02, stealth/space-bunny-alpha 2026-10-10, stealth/cat-jam 2026-10-20, minimax-m3.1-flash:free and ornith-1.5-122b:free 2026-10-23: API no longer serves them.)
   { id: 'stealth/glyph-cluster:free', name: 'Glyph Cluster', contextWindow: 256000, maxTokens: 131072, protocol: 'openai', modalities: ['text'], efforts: ['low', 'medium', 'high', 'xhigh'], defaultEffort: 'medium', tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free', latest: true },
