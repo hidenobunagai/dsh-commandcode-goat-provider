@@ -102,8 +102,6 @@ export const CATALOG: readonly CatalogEntry[] = [
   // ── Free tier extras ───────────────────────────────────────────────
   { id: 'reflection/beam:free', name: 'Beam 1.0', contextWindow: 1048576, maxTokens: 131072, protocol: 'openai', modalities: ['text'], efforts: ['low', 'medium', 'high', 'xhigh', 'max'], defaultEffort: 'medium', tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free', latest: true },
   { id: 'poolside/laguna-s-2.1-free', name: 'Laguna S 2.1', contextWindow: 256000, maxTokens: 32768, protocol: 'openai', modalities: ['text'], tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free' },
-  // Free promo snapshot of Ling 3.1 Flash (commandcode.ai/models/ling-3-1-flash-1019-free: reasons, text-only, $0).
-  { id: 'inclusionai/ling-3.1-flash-1019:free', name: 'Ling 3.1 Flash 1019', contextWindow: 1000000, maxTokens: 131072, protocol: 'openai', modalities: ['text'], efforts: ['low', 'medium', 'high'], defaultEffort: 'medium', tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free', latest: true },
   // Stealth preview (commandcode.ai/models/glyph-cluster-free: reasons, text-only, $0).
   // (stealth/pixel-canary dropped 2026-10-02, stealth/space-bunny-alpha 2026-10-10, stealth/cat-jam 2026-10-20, minimax-m3.1-flash:free and ornith-1.5-122b:free 2026-10-23: API no longer serves them.)
   { id: 'stealth/glyph-cluster:free', name: 'Glyph Cluster', contextWindow: 256000, maxTokens: 131072, protocol: 'openai', modalities: ['text'], efforts: ['low', 'medium', 'high', 'xhigh'], defaultEffort: 'medium', tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free', latest: true },
@@ -121,6 +119,8 @@ export const CATALOG: readonly CatalogEntry[] = [
   { id: 'gpt-5.4-mini', name: 'GPT-5.4 Mini', contextWindow: 400000, maxTokens: 65536, protocol: 'openai', modalities: ['text', 'image'], efforts: ['low', 'medium', 'high', 'xhigh'], defaultEffort: 'medium', tier: 'go', label: 'Go/GOAT', intelligence: 48.0, inputPrice: 0.75, outputPrice: 4.50},
   { id: 'meta/muse-spark-1.1', name: 'Muse Spark 1.1', contextWindow: 1048576, maxTokens: 65536, protocol: 'openai', modalities: ['text', 'image'], efforts: ['low', 'medium', 'high', 'xhigh', 'max'], defaultEffort: 'medium', tier: 'goat', label: 'GOAT', intelligence: 55.0, inputPrice: 1.25, outputPrice: 4.25 },
   { id: 'inclusionai/ling-3.1-flash', name: 'Ling 3.1 Flash', contextWindow: 262144, maxTokens: 131072, protocol: 'openai', modalities: ['text'], efforts: ['low', 'medium', 'high'], defaultEffort: 'medium', tier: 'go', label: 'Go/GOAT', intelligence: 41.0, inputPrice: 0.30, outputPrice: 0.90, latest: true },
+  // Dated Ling 3.1 Flash snapshot; replaced the :free promo id on 2026-11-03 (commandcode.ai/models/ling-3-1-flash-1019: reasons, text-only, Go and above).
+  { id: 'inclusionai/ling-3.1-flash-1019', name: 'Ling 3.1 Flash 1019', contextWindow: 1000000, maxTokens: 131072, protocol: 'openai', modalities: ['text'], efforts: ['low', 'medium', 'high'], defaultEffort: 'medium', tier: 'go', label: 'Go/GOAT', inputPrice: 0.30, outputPrice: 0.90, latest: true },
   { id: 'mistral/mistral-large-4', name: 'Mistral Large 4', contextWindow: 524288, maxTokens: 131072, protocol: 'openai', modalities: ['text', 'image'], efforts: ['high'], defaultEffort: 'high', tier: 'go', label: 'Go/GOAT', intelligence: 38.0, inputPrice: 1.36, outputPrice: 4.18, latest: true },
 
   // ── Pro / Provider ────────────────────────────────────────────────
