@@ -73,9 +73,9 @@ describe('catalog', () => {
   })
 
   it('checks reasoning effort capability via modelSupportsEffort', () => {
-    // Free tier models do not support reasoning effort
-    expect(modelSupportsEffort('poolside/laguna-s-2.1-free')).toBe(false)
-    expect(modelSupportsEffort({ provider: 'commandcode-goat', model: 'poolside/laguna-s-2.1-free' })).toBe(false)
+    // Non-reasoning models do not support reasoning effort
+    expect(modelSupportsEffort('zai-org/GLM-5')).toBe(false)
+    expect(modelSupportsEffort({ provider: 'commandcode-goat', model: 'zai-org/GLM-5' })).toBe(false)
     // Known effort-capable models
     expect(modelSupportsEffort('reflection/beam:free')).toBe(true)
     expect(modelSupportsEffort({ provider: 'commandcode-goat', model: 'reflection/beam:free' })).toBe(true)
