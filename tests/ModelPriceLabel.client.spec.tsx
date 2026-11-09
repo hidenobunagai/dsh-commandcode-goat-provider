@@ -38,7 +38,7 @@ describe('ModelPriceLabel', () => {
     render(
       React.createElement(
         ModelPriceLabel,
-        owner({ model: { id: 'reflection/beam:free', name: 'Beam 1.0' } }),
+        owner({ model: { id: 'stealth/crouton-alpha', name: 'Crouton Alpha' } }),
       ),
     )
 
