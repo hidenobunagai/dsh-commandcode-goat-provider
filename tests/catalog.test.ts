@@ -90,10 +90,10 @@ describe("catalog", () => {
       false,
     );
     // Known effort-capable models
-    expect(modelSupportsEffort("stealth/crouton-alpha")).toBe(true);
-    expect(
-      modelSupportsEffort({ provider: "commandcode-goat", model: "stealth/crouton-alpha" }),
-    ).toBe(true);
+    expect(modelSupportsEffort("claude-fable-5-2")).toBe(true);
+    expect(modelSupportsEffort({ provider: "commandcode-goat", model: "claude-fable-5-2" })).toBe(
+      true,
+    );
     expect(modelSupportsEffort("stealth/glyph-cluster:free")).toBe(true);
     expect(
       modelSupportsEffort({ provider: "commandcode-goat", model: "stealth/glyph-cluster:free" }),

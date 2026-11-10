@@ -38,7 +38,7 @@ describe("ModelPriceLabel", () => {
     render(
       React.createElement(
         ModelPriceLabel,
-        owner({ model: { id: "stealth/crouton-alpha", name: "Crouton Alpha" } }),
+        owner({ model: { id: "stealth/glyph-cluster:free", name: "Glyph Cluster" } }),
       ),
     );
 

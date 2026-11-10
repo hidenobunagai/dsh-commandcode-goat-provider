@@ -103,13 +103,13 @@ export const CATALOG: readonly CatalogEntry[] = [
 
   // ── Free tier extras ───────────────────────────────────────────────
   // Stealth preview (commandcode.ai/models/glyph-cluster-free: reasons, text-only, $0).
-  // (stealth/pixel-canary dropped 2026-10-02, stealth/space-bunny-alpha 2026-10-10, stealth/cat-jam 2026-10-20, minimax-m3.1-flash:free and ornith-1.5-122b:free 2026-10-23, reflection/beam:free 2026-11-10: API no longer serves them.)
-  // Stealth preview (commandcode.ai/docs/resources/pricing-limits#crouton-alpha-free: image input, reasoning low..max, 1M ctx, $0 while the preview lasts).
-  { id: 'stealth/crouton-alpha', name: 'Crouton Alpha', contextWindow: 1048576, maxTokens: 131072, protocol: 'openai', modalities: ['text', 'image'], efforts: ['low', 'medium', 'high', 'xhigh', 'max'], defaultEffort: 'medium', tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free', latest: true },
+  // (stealth/pixel-canary dropped 2026-10-02, stealth/space-bunny-alpha 2026-10-10, stealth/cat-jam 2026-10-20, minimax-m3.1-flash:free and ornith-1.5-122b:free 2026-10-23, reflection/beam:free 2026-11-10, stealth/crouton-alpha 2026-11-11: API no longer serves them.)
   { id: 'stealth/glyph-cluster:free', name: 'Glyph Cluster', contextWindow: 256000, maxTokens: 131072, protocol: 'openai', modalities: ['text'], efforts: ['low', 'medium', 'high', 'xhigh'], defaultEffort: 'medium', tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free', latest: true },
 
   // ── Legacy models still served by /provider/v1/models (API returns no pricing) ──
   // Pricing backfilled from last known Command Code catalog; mark as legacy tier.
+  // Claude Fable 5.2 (commandcode.ai/models/claude-fable-5-2: Max plan and above, $8/$40; Anthropic: adaptive thinking always on, effort low..max).
+  { id: 'claude-fable-5-2', name: 'Claude Fable 5.2', contextWindow: 1000000, maxTokens: 65536, protocol: 'anthropic', modalities: ['text', 'image'], efforts: ['low', 'medium', 'high', 'xhigh', 'max'], defaultEffort: 'medium', tier: 'pro', label: 'Pro', inputPrice: 8.00, outputPrice: 40.00, latest: true },
   { id: 'claude-fable-5-1', name: 'Claude Fable 5.1', contextWindow: 1000000, maxTokens: 65536, protocol: 'anthropic', modalities: ['text', 'image'], efforts: ['low', 'medium', 'high', 'xhigh', 'max'], defaultEffort: 'medium', tier: 'pro', label: 'Pro', inputPrice: 10.00, outputPrice: 50.00, latest: true },
   { id: 'claude-fable-5', name: 'Claude Fable 5', contextWindow: 1000000, maxTokens: 65536, protocol: 'anthropic', modalities: ['text', 'image'], efforts: ['low', 'medium', 'high', 'xhigh', 'max'], defaultEffort: 'medium', tier: 'pro', label: 'Pro', intelligence: 64.0, inputPrice: 10.00, outputPrice: 50.00},
   { id: 'claude-opus-4-7', name: 'Claude Opus 4.7', contextWindow: 1000000, maxTokens: 65536, protocol: 'anthropic', modalities: ['text', 'image'], efforts: ['low', 'medium', 'high', 'xhigh', 'max'], defaultEffort: 'high', tier: 'provider', label: 'Provider', intelligence: 63.0, inputPrice: 5.00, outputPrice: 25.00},
