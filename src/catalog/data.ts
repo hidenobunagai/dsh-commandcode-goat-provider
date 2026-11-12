@@ -105,6 +105,8 @@ export const CATALOG: readonly CatalogEntry[] = [
   // Stealth preview (commandcode.ai/models/glyph-cluster-free: reasons, text-only, $0).
   // (stealth/pixel-canary dropped 2026-10-02, stealth/space-bunny-alpha 2026-10-10, stealth/cat-jam 2026-10-20, minimax-m3.1-flash:free and ornith-1.5-122b:free 2026-10-23, reflection/beam:free 2026-11-10, stealth/crouton-alpha 2026-11-11: API no longer serves them.)
   { id: 'stealth/glyph-cluster:free', name: 'Glyph Cluster', contextWindow: 256000, maxTokens: 131072, protocol: 'openai', modalities: ['text'], efforts: ['low', 'medium', 'high', 'xhigh'], defaultEffort: 'medium', tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free', latest: true },
+  // Free tier (commandcode.ai/docs/resources/pricing-limits#inkling-2-small-free: image input, reasoning low/medium/high/max, 1M ctx, $0 while the free tier lasts, 200 requests/day).
+  { id: 'thinkingmachines/inkling-2-small:free', name: 'Inkling 2 Small', contextWindow: 1048576, maxTokens: 131072, protocol: 'openai', modalities: ['text', 'image'], efforts: ['low', 'medium', 'high', 'max'], defaultEffort: 'medium', tier: 'free', label: 'Free', inputPrice: 'free', outputPrice: 'free', latest: true },
 
   // ── Legacy models still served by /provider/v1/models (API returns no pricing) ──
   // Pricing backfilled from last known Command Code catalog; mark as legacy tier.
